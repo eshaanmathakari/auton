@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auton Tip Button - Embeddable Widget</title>
+  <style>
+    .auton-tip-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #9333ea 0%, #6366f1 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    .auton-tip-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+    }
+    .auton-tip-button:active {
+      transform: translateY(0);
+    }
+    .auton-tip-icon {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Auton Embeddable Widget Example</h1>
+  <p>Copy the code below to embed the Auton tip button on your website:</p>
+  
+  <pre style="background: #f5f5f5; padding: 16px; border-radius: 8px; overflow-x: auto;"><code>&lt;!-- Auton Tip Button Widget --&gt;
+&lt;script&gt;
+  (function() {
+    var autonTipButton = document.createElement('a');
+    autonTipButton.className = 'auton-tip-button';
+    autonTipButton.href = 'YOUR_TIP_LINK_HERE';
+    autonTipButton.target = '_blank';
+    autonTipButton.rel = 'noopener noreferrer';
+    autonTipButton.innerHTML = '&lt;svg class="auton-tip-icon" viewBox="0 0 24 24" fill="currentColor"&gt;&lt;path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/&gt;&lt;/svg&gt; Tip with Auton';
+    
+    // Insert the button into the page
+    var script = document.currentScript;
+    script.parentNode.insertBefore(autonTipButton, script);
+  })();
+&lt;/script&gt;</code></pre>
+
+  <h2>Example:</h2>
+  <!-- Auton Tip Button Widget -->
+  <script>
+    (function() {
+      var autonTipButton = document.createElement('a');
+      autonTipButton.className = 'auton-tip-button';
+      autonTipButton.href = 'https://your-domain.com/tip/YOUR_CREATOR_ID';
+      autonTipButton.target = '_blank';
+      autonTipButton.rel = 'noopener noreferrer';
+      autonTipButton.innerHTML = '<svg class="auton-tip-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> Tip with Auton';
+      
+      // Insert the button into the page
+      var script = document.currentScript;
+      script.parentNode.insertBefore(autonTipButton, script);
+    })();
+  </script>
+
+  <h2>Or use this simpler version:</h2>
+  <pre style="background: #f5f5f5; padding: 16px; border-radius: 8px; overflow-x: auto;"><code>&lt;a href="YOUR_TIP_LINK_HERE" 
+   target="_blank" 
+   class="auton-tip-button"
+   style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: linear-gradient(135deg, #9333ea 0%, #6366f1 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"&gt;
+  💜 Tip with Auton
+&lt;/a&gt;</code></pre>
+</body>
+</html>
+

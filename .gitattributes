@@ -1,0 +1,9 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Lock files
+package-lock.json text eol=lf
+yarn.lock text eol=lf
+
+# JSON files
+*.json text eol=lf
