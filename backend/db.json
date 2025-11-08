@@ -1,0 +1,88 @@
+{
+  "creators": {
+    "FNPV1axM": {
+      "id": "FNPV1axM",
+      "walletAddress": "FNPV1axM5zJ6PRdY7zRgx2WMVvhCZMNP8eFuezVrSsn8",
+      "createdAt": "2025-11-07T18:24:35.305Z"
+    }
+  },
+  "tips": {},
+  "content": {
+    "a789af3e-5a7c-433c-8ed1-9ea073c5d6f1": {
+      "id": "a789af3e-5a7c-433c-8ed1-9ea073c5d6f1",
+      "creatorId": "FNPV1axM",
+      "createdAt": "2025-11-07T18:24:35.321Z",
+      "updatedAt": "2025-11-07T18:24:35.321Z",
+      "title": "Test Run 1",
+      "description": "testing if this lora ipsum hahha",
+      "price": 0.01,
+      "assetType": "SOL",
+      "categories": [
+        "test text"
+      ],
+      "contentKind": "file",
+      "allowDownload": true,
+      "creatorWalletAddress": "FNPV1axM5zJ6PRdY7zRgx2WMVvhCZMNP8eFuezVrSsn8",
+      "storageKey": "content/FNPV1axM/a789af3e-5a7c-433c-8ed1-9ea073c5d6f1/Turbulent_Advocate_Superpowers.PDF.enc",
+      "originalFileName": "Turbulent Advocate Superpowers.PDF",
+      "contentType": "application/pdf",
+      "fileSize": 389661,
+      "encryption": {
+        "key": "yU+SDuCy4mWf0mqHxoiZ6dkzYC6oLOkuQal8w6ZxphQ=",
+        "iv": "9BkDIuompCrfHVgt",
+        "authTag": "Xu1nPcRvAObbMfFLj6H3IQ=="
+      },
+      "preview": {
+        "enabled": false,
+        "mode": "auto",
+        "snippet": null,
+        "previewStorageKey": null,
+        "previewType": null,
+        "previewContentType": null
+      },
+      "status": "active",
+      "disclaimers": {
+        "refunds": "All purchases settle on-chain and are final. Please review previews before unlocking."
+      },
+      "contentHash": "06d91a89971f87b94f302d7c2ef686a94224d0a8a2ddf3a72e2713fb86a68bb0"
+    },
+    "3d96a89a-7ca8-471e-a615-d68fd86989cc": {
+      "id": "3d96a89a-7ca8-471e-a615-d68fd86989cc",
+      "creatorId": "FNPV1axM",
+      "createdAt": "2025-11-07T18:26:12.662Z",
+      "updatedAt": "2025-11-07T18:26:12.662Z",
+      "title": "test-2",
+      "description": "testing this patreon like workflow",
+      "price": 0.1,
+      "assetType": "SOL",
+      "categories": [],
+      "contentKind": "file",
+      "allowDownload": true,
+      "creatorWalletAddress": "FNPV1axM5zJ6PRdY7zRgx2WMVvhCZMNP8eFuezVrSsn8",
+      "storageKey": "content/FNPV1axM/3d96a89a-7ca8-471e-a615-d68fd86989cc/Screenshot_2025-01-15_at_19.46.56.png.enc",
+      "originalFileName": "Screenshot 2025-01-15 at 19.46.56.png",
+      "contentType": "image/png",
+      "fileSize": 2713462,
+      "encryption": {
+        "key": "+wv4TKjjz97mzcegSQmVsheirDGntx8NDdSl6jryrLk=",
+        "iv": "QRrq6EYr2LIi8X0l",
+        "authTag": "2trxahwtj4f79H67tD3K4Q=="
+      },
+      "preview": {
+        "enabled": true,
+        "mode": "custom",
+        "snippet": "testing",
+        "previewStorageKey": null,
+        "previewType": "text",
+        "previewContentType": null
+      },
+      "status": "active",
+      "disclaimers": {
+        "refunds": "All purchases settle on-chain and are final. Please review previews before unlocking."
+      },
+      "contentHash": "42fcd23293a80acddb6f0b5e09c36de06dd88bd0422dff835d6775042afd6a71"
+    }
+  },
+  "paymentIntents": {},
+  "accessGrants": {}
+}
