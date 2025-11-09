@@ -54,6 +54,7 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [decryptedCids, setDecryptedCids] = useState<Map<number, string>>(new Map());
+  const [contentTypes, setContentTypes] = useState<Map<number, string>>(new Map());
   const [paymentProcessing, setPaymentProcessing] = useState<Map<number, boolean>>(new Map());
 
   const connection = useMemo(() => new Connection(SOLANA_RPC_URL, 'confirmed'), []);
@@ -116,6 +117,20 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     }
   };
 
+  const fetchContentType = async (item: ContentItem, cid: string) => {
+    try {
+      const response = await fetch(`${IPFS_GATEWAY_URL}${cid}`, { method: 'HEAD' });
+      if (response.ok) {
+        const contentType = response.headers.get('Content-Type');
+        if (contentType) {
+          setContentTypes(prev => new Map(prev).set(item.id.toNumber(), contentType));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch content type:', err);
+    }
+  };
+
   const handleUnlockContent = async (contentItem: ContentItem) => {
     if (!publicKey || !connected || !program) {
       setError('Connect your wallet to unlock content.');
@@ -168,7 +183,7 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
         const signature = await sendTransaction(transaction, connection);
         await connection.confirmTransaction(signature, 'confirmed');
 
-        setSuccess('Payment confirmed! Attempting to retrieve content...');
+        setSuccess('Payment confirmed! Retrieving content...');
         // After successful payment, retry access request
         await new Promise(resolve => setTimeout(resolve, 2000)); // Give Solana time to propagate
         await handleUnlockContent(contentItem); // Recursive call to get CID
@@ -176,7 +191,8 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
         // Access Granted - retrieve decrypted CID
         const { ipfsCid }: { ipfsCid: string } = await accessResponse.json();
         setDecryptedCids(prev => new Map(prev).set(contentItem.id.toNumber(), ipfsCid));
-        setSuccess('Content unlocked!');
+        setSuccess('Content unlocked! Determining content type...');
+        await fetchContentType(contentItem, ipfsCid);
       } else {
         const errData = await accessResponse.json();
         throw new Error(errData.error || 'Failed to get access.');
@@ -187,6 +203,51 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     } finally {
       setPaymentProcessing(prev => new Map(prev).set(contentItem.id.toNumber(), false));
     }
+  };
+
+  const renderUnlockedContent = (item: ContentItem) => {
+    const cid = decryptedCids.get(item.id.toNumber());
+    const contentType = contentTypes.get(item.id.toNumber());
+    const url = `${IPFS_GATEWAY_URL}${cid}`;
+
+    if (!cid) return null;
+
+    if (!contentType) {
+      return <p className="text-sm text-gray-500">Determining content type...</p>;
+    }
+
+    if (contentType.startsWith('image/')) {
+      return (
+        <img
+          src={url}
+          alt={`Content ${item.id.toNumber()}`}
+          className="w-full h-auto rounded-md mt-2"
+        />
+      );
+    }
+
+    if (contentType.startsWith('video/')) {
+      return (
+        <video
+          controls
+          src={url}
+          className="w-full h-auto rounded-md mt-2"
+        />
+      );
+    }
+
+    return (
+      <div className="mt-2 text-center">
+        <a
+          href={url}
+          download
+          className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700"
+        >
+          Download File
+        </a>
+        <p className="text-xs text-gray-500 mt-1">({contentType})</p>
+      </div>
+    );
   };
 
   if (loading) {
@@ -253,17 +314,7 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
               </p>
 
               {decryptedCids.has(item.id.toNumber()) ? (
-                <div className="space-y-2">
-                  <p className="text-green-600 dark:text-green-400 font-medium">Access Granted!</p>
-                  <div className="mt-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
-                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-2">Content Preview:</h4>
-                    <img
-                      src={`${IPFS_GATEWAY_URL}${decryptedCids.get(item.id.toNumber())}`}
-                      alt={`Content ${item.id.toNumber()}`}
-                      className="w-full h-auto rounded-md"
-                    />
-                  </div>
-                </div>
+                renderUnlockedContent(item)
               ) : (
                 <button
                   onClick={() => handleUnlockContent(item)}
