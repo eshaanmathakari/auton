@@ -42,19 +42,31 @@ pub mod auton_program {
 
     // Records that a user has paid for a specific piece of content.
     // This transfers SOL from buyer to creator and creates an access receipt.
-    pub fn process_payment(ctx: Context<ProcessPayment>, content_hash: [u8; 32], amount: u64) -> Result<()> {
-        // Transfer SOL from buyer to creator
+    pub fn process_payment(ctx: Context<ProcessPayment>, content_hash: [u8; 32]) -> Result<()> {
+        let creator_account = &ctx.accounts.creator_account;
+
+        // Find the content item and its price by hashing and comparing.
+        // Note: This linear scan can become expensive if a creator has many content items.
+        // For a production system, a more efficient lookup method (like a hash map on-chain
+        // or passing a content index) would be a good optimization.
+        let content_item = creator_account.content.iter().find(|item| {
+            anchor_lang::solana_program::hash::hash(&item.encrypted_cid).to_bytes() == content_hash
+        }).ok_or(CustomError::ContentNotFound)?;
+
+        let amount_to_pay = content_item.price;
+
+        // Transfer SOL from buyer to creator's wallet
         let transfer_instruction = anchor_lang::solana_program::system_instruction::transfer(
             &ctx.accounts.buyer.key(),
-            &ctx.accounts.creator.key(),
-            amount,
+            &ctx.accounts.creator_wallet.key(), // Use the verified wallet from the creator_account
+            amount_to_pay,
         );
         
         anchor_lang::solana_program::program::invoke(
             &transfer_instruction,
             &[
                 ctx.accounts.buyer.to_account_info(),
-                ctx.accounts.creator.to_account_info(),
+                ctx.accounts.creator_wallet.to_account_info(), // Use the verified wallet
             ],
         )?;
 
@@ -72,11 +84,13 @@ pub mod auton_program {
 #[account]
 pub struct CreatorAccount {
     pub creator_wallet: Pubkey,
+    pub last_content_id: u64, // Counter for generating unique content IDs
     pub content: Vec<ContentItem>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ContentItem {
+    pub id: u64, // Unique ID for the content
     pub title: String,
     pub price: u64, // Price in lamports
     pub encrypted_cid: Vec<u8>, // Encrypted IPFS CID (ciphertext + nonce + auth tag)
@@ -85,7 +99,7 @@ pub struct ContentItem {
 #[account]
 pub struct PaidAccessAccount {
     pub buyer: Pubkey,
-    pub content_hash: [u8; 32], // Hash of the encrypted CID for identification
+    pub content_id: u64, // ID of the content this receipt grants access to
 }
 
 
@@ -141,7 +155,7 @@ pub struct AddContent<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(content_hash: [u8; 32], amount: u64)]
+#[instruction(content_hash: [u8; 32])]
 pub struct ProcessPayment<'info> {
     // The PDA "receipt" account.
     // The seeds ensure that a user can only have one receipt per content item.
@@ -154,10 +168,16 @@ pub struct ProcessPayment<'info> {
     )]
     pub paid_access_account: Account<'info, PaidAccessAccount>,
 
-    // The creator who will receive the payment
-    /// CHECK: This is the creator's wallet address, validated by the client
+    // The creator's account, used to verify the payment destination and price.
     #[account(mut)]
-    pub creator: AccountInfo<'info>,
+    pub creator_account: Account<'info, CreatorAccount>,
+
+    // The creator's wallet, derived from the creator_account.
+    // The `address` constraint is a key security feature: it ensures the client
+    // passes the correct wallet address that is stored in the creator_account.
+    /// CHECK: This is the creator's wallet address, validated by the address constraint.
+    #[account(mut, address = creator_account.creator_wallet)]
+    pub creator_wallet: AccountInfo<'info>,
 
     // The user who is paying.
     #[account(mut)]
@@ -174,4 +194,6 @@ pub struct ProcessPayment<'info> {
 pub enum CustomError {
     #[msg("You are not authorized to perform this action.")]
     Unauthorized,
+    #[msg("The specified content was not found in the creator's account.")]
+    ContentNotFound,
 }

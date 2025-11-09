@@ -112,6 +112,7 @@ describe("auton_program", () => {
   it("Processes a payment and creates an access receipt", async () => {
     const buyer = anchor.web3.Keypair.generate();
     
+    // Fund the buyer's account
     const tx = new anchor.web3.Transaction().add(
         anchor.web3.SystemProgram.transfer({
             fromPubkey: provider.wallet.publicKey,
@@ -121,10 +122,19 @@ describe("auton_program", () => {
     );
     await provider.sendAndConfirm(tx);
 
-    const ipfsCid = "QmXgZAUc3kCn7C4s21N2b345aD567890E12345F67890";
-    const encryptedCid = encryptCID(ipfsCid, encryptionKey);
+    // --- Get the content to be purchased ---
+    const creatorAccountData = await program.account.creatorAccount.fetch(
+      creatorAccountPDA
+    );
+    const contentToBuy = creatorAccountData.content[0];
+    const price = contentToBuy.price;
+    const encryptedCid = Buffer.from(contentToBuy.encryptedCid);
     
     // Hash the encrypted CID for the PDA seeds
+    // Note: Anchor's on-chain SHA256 is slightly different from Node's.
+    // For testing, we can re-fetch the content and hash it, but for a real client,
+    // it's crucial to use a library that produces a Solana-compatible SHA256 hash.
+    // Here, we'll simulate the client having the correct hash.
     const contentHash = createHash("sha256").update(encryptedCid).digest();
 
     const [paidAccessPDA, _accessBump] =
@@ -137,25 +147,35 @@ describe("auton_program", () => {
         program.programId
       );
 
-    const paymentAmount = new anchor.BN(1 * anchor.web3.LAMPORTS_PER_SOL);
+    // --- Check balances before the transaction ---
+    const creatorBalanceBefore = await provider.connection.getBalance(creator.publicKey);
 
+    // --- Execute the payment ---
     await program.methods
-      .processPayment(Array.from(contentHash), paymentAmount)
+      .processPayment(Array.from(contentHash))
       .accounts({
         paidAccessAccount: paidAccessPDA,
-        creator: creator.publicKey,
+        creatorAccount: creatorAccountPDA,
+        creatorWallet: creator.publicKey, // The address for the check
         buyer: buyer.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
       .signers([buyer])
       .rpc();
 
+    // --- Verify the results ---
     const accessAccountData = await program.account.paidAccessAccount.fetch(
       paidAccessPDA
     );
 
+    // 1. Check the access receipt
     assert.ok(accessAccountData.buyer.equals(buyer.publicKey));
     assert.deepEqual(accessAccountData.contentHash, Array.from(contentHash));
+    
+    // 2. Check if the creator received the correct payment
+    const creatorBalanceAfter = await provider.connection.getBalance(creator.publicKey);
+    const expectedBalance = creatorBalanceBefore + price.toNumber();
+    assert.equal(creatorBalanceAfter, expectedBalance, "Creator did not receive the correct payment amount");
     
     console.log("✓ Payment verified! User can now decrypt and access content.");
   });
