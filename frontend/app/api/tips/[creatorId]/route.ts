@@ -4,10 +4,10 @@ import database from '../../../../lib/database';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { creatorId: string } }
+  { params }: { params: Promise<{ creatorId: string }> }
 ) {
   try {
-    const { creatorId } = params;
+    const { creatorId } = await params;
     
     const creator = database.getCreator(creatorId);
     if (!creator) {

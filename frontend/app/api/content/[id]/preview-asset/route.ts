@@ -1,14 +1,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import database from '../../../../../../lib/database';
-import { readObject } from '../../../../../../lib/storage/storageProvider';
+import database from '../../../../../lib/database';
+import { readObject } from '../../../../../lib/storage/storageProvider';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { contentId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { contentId } = params;
+    const { id: contentId } = await params;
     const content = database.getContent(contentId);
     if (!content || !content.preview?.previewStorageKey) {
       return NextResponse.json({ error: 'Preview asset not available' }, { status: 404 });

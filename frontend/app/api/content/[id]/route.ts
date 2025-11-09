@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import database from '../../../../../lib/database';
+import database from '../../../../lib/database';
 
 const API_BASE_URL = process.env.PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -33,10 +33,10 @@ function sanitizeContent(content: any) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { contentId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { contentId } = params;
+    const { id: contentId } = await params;
     const record = database.getContent(contentId);
     if (!record) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 });

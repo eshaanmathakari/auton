@@ -1,9 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import database from '../../../../lib/database';
-import { encryptBuffer, buildTextPreview } from '../../../../lib/utils/encryption';
-import { saveObject } from '../../../../lib/storage/storageProvider';
+import database from '../../../lib/database';
+import { encryptBuffer, buildTextPreview } from '../../../lib/utils/encryption';
+import { saveObject } from '../../../lib/storage/storageProvider';
 
 const API_BASE_URL = process.env.PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 

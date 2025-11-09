@@ -12,14 +12,26 @@ async function importS3Module() {
   if (!shouldUseS3) {
     throw new Error('S3 is not configured');
   }
-  const module = await import('./s3Storage.js');
-  return module;
+  try {
+    const module = await import('./s3Storage.js');
+    return module;
+  } catch (error) {
+    // If S3 module can't be loaded (e.g., @aws-sdk/client-s3 not installed), fall back to local storage
+    console.warn('S3 storage module not available, falling back to local storage:', error.message);
+    throw new Error('S3 is not available');
+  }
 }
 
 export async function saveObject({ key, buffer, contentType }) {
   if (shouldUseS3) {
-    const { saveObjectToS3 } = await importS3Module();
-    return saveObjectToS3({ key, buffer, contentType });
+    try {
+      const { saveObjectToS3 } = await importS3Module();
+      return saveObjectToS3({ key, buffer, contentType });
+    } catch (error) {
+      // Fall back to local storage if S3 is not available
+      console.warn('Falling back to local storage:', error.message);
+      return saveObjectToDisk({ key, buffer });
+    }
   }
 
   return saveObjectToDisk({ key, buffer });
@@ -27,16 +39,28 @@ export async function saveObject({ key, buffer, contentType }) {
 
 export async function readObject(key) {
   if (shouldUseS3) {
-    const { readObjectFromS3 } = await importS3Module();
-    return readObjectFromS3(key);
+    try {
+      const { readObjectFromS3 } = await importS3Module();
+      return readObjectFromS3(key);
+    } catch (error) {
+      // Fall back to local storage if S3 is not available
+      console.warn('Falling back to local storage:', error.message);
+      return readObjectFromDisk(key);
+    }
   }
   return readObjectFromDisk(key);
 }
 
 export async function deleteObject(key) {
   if (shouldUseS3) {
-    const { deleteObjectFromS3 } = await importS3Module();
-    return deleteObjectFromS3(key);
+    try {
+      const { deleteObjectFromS3 } = await importS3Module();
+      return deleteObjectFromS3(key);
+    } catch (error) {
+      // Fall back to local storage if S3 is not available
+      console.warn('Falling back to local storage:', error.message);
+      return deleteObjectFromDisk(key);
+    }
   }
   return deleteObjectFromDisk(key);
 }

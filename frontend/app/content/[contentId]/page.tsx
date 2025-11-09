@@ -185,7 +185,7 @@ export default function ContentPaywall({
 
     if (content.preview.previewType === 'text' && content.preview.snippet) {
       return (
-        <p className="rounded-lg bg-gray-100 dark:bg-gray-800 p-4 text-sm text-gray-700 dark:text-gray-200">
+        <p className="rounded-lg bg-white border border-[#E0E0E0] p-4 text-sm text-gray-700 leading-relaxed">
           {content.preview.snippet}
         </p>
       );
@@ -214,9 +214,9 @@ export default function ContentPaywall({
           href={content.preview.previewUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-sm text-purple-600 underline"
+          className="text-sm text-gray-900 font-medium hover:underline"
         >
-          View preview asset
+          View preview asset →
         </a>
       );
     }
@@ -226,73 +226,75 @@ export default function ContentPaywall({
 
   if (!content) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <p className="text-gray-600 dark:text-gray-300">{error || 'Loading content...'}</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">{error || 'Loading content...'}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-6">
-        <Link href="/" className="text-sm text-purple-600 hover:underline">
+    <div className="min-h-screen">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 transition-colors inline-flex items-center gap-1">
           ← Back to creator hub
         </Link>
-        <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-lg p-8 space-y-6">
+        <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm p-8 space-y-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-purple-500">Locked drop</p>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{content.title}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{content.contentKind}</p>
-            <p className="mt-4 text-gray-700 dark:text-gray-300">{content.description}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Locked drop</p>
+            <h1 className="text-3xl font-bold text-gray-900 mt-2 mb-1">{content.title}</h1>
+            <p className="text-xs uppercase tracking-wide text-gray-500 mb-4">{content.contentKind}</p>
+            <p className="text-gray-600 leading-relaxed">{content.description}</p>
           </div>
 
-          <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase text-gray-500">Preview / spoiler</p>
+          <div className="rounded-lg border border-dashed border-[#E0E0E0] bg-gray-50 p-5 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Preview / spoiler</p>
             {renderPreview()}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 pb-4 border-b border-[#E0E0E0]">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-purple-600">{content.price}</span>
-              <span className="text-lg font-semibold text-gray-500">{content.assetType}</span>
+              <span className="text-3xl font-bold text-gray-900">{content.price}</span>
+              <span className="text-lg font-semibold text-gray-600">{content.assetType}</span>
             </div>
             <div className="text-sm text-gray-500">
               Paid directly to{' '}
-              <span className="font-mono">
+              <span className="font-mono text-gray-700">
                 {content.creatorWalletAddress.slice(0, 4)}...
                 {content.creatorWalletAddress.slice(-4)}
               </span>
             </div>
           </div>
 
-          <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700" />
+          <div className="flex justify-center">
+            <WalletMultiButton className="!bg-gray-900 hover:!bg-gray-800 !rounded-lg !h-auto !py-2.5 !px-4" />
+          </div>
 
-          <div className="space-y-3 rounded-2xl bg-gray-50 dark:bg-gray-800 p-5 text-sm text-gray-600 dark:text-gray-300">
-            <p className="font-semibold text-gray-800 dark:text-gray-100">No-refund policy</p>
-            <p>
+          <div className="space-y-3 rounded-lg bg-amber-50 border border-amber-200 p-5 text-sm text-amber-900">
+            <p className="font-semibold">No-refund policy</p>
+            <p className="leading-relaxed">
               {content.disclaimers?.refunds ||
                 'Blockchain payments are final. Double-check previews before unlocking.'}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-            <p className="font-semibold text-gray-900 dark:text-white">Unlock steps</p>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-300">
+          <div className="rounded-lg border border-[#E0E0E0] bg-gray-50 p-6 space-y-4">
+            <p className="font-semibold text-gray-900">Unlock steps</p>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 leading-relaxed">
               <li>Connect a Solana wallet (Phantom, Solflare).</li>
               <li>Request the paywall so we can attach a unique reference.</li>
               <li>Approve the SOL payment, then grab the short-lived download link.</li>
             </ol>
-            <div className="flex gap-4 flex-wrap">
+            <div className="flex gap-3 flex-wrap pt-2">
               <button
                 onClick={requestPayment}
-                className="rounded-xl border border-purple-300 px-4 py-2 text-purple-600 hover:bg-purple-50"
+                className="rounded-lg border border-[#E0E0E0] bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
               >
                 1. Get payment request
               </button>
               <button
                 onClick={unlockContent}
                 disabled={!paymentRequest || loading}
-                className="rounded-xl bg-purple-600 px-4 py-2 font-semibold text-white disabled:bg-gray-400"
+                className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Confirming...' : '2. Unlock now'}
               </button>
@@ -300,18 +302,18 @@ export default function ContentPaywall({
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 space-y-2">
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 space-y-3">
               <p>{success}</p>
               {accessUrl && (
                 <button
                   onClick={() => window.open(accessUrl, '_blank')}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-white font-semibold hover:bg-green-700"
+                  className="rounded-lg bg-green-600 px-5 py-2.5 text-white font-semibold hover:bg-green-700 transition-colors"
                 >
                   Open download
                 </button>

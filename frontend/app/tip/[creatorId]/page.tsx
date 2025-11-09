@@ -154,40 +154,42 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
 
   if (!paymentRequest && !loading && !error && !success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm p-8">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Send a Tip
             </h1>
-            <p className="text-gray-600 dark:text-gray-300">
+            <p className="text-gray-600">
               Support this creator with an instant payment on Solana
             </p>
           </div>
 
           {mounted && !connected && (
             <div className="mb-6">
-              <WalletMultiButton className="!bg-purple-600 hover:!bg-purple-700" />
-              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex justify-center">
+                <WalletMultiButton className="!bg-gray-900 hover:!bg-gray-800 !rounded-lg !h-auto !py-2.5 !px-4" />
+              </div>
+              <p className="mt-4 text-sm text-gray-600 text-center">
                 Connect your wallet to send a tip
               </p>
             </div>
           )}
 
           {mounted && connected && publicKey && (
-            <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <p className="text-sm text-green-800 dark:text-green-300">
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
                 ✓ Wallet Connected: {publicKey.toString().substring(0, 8)}...
               </p>
             </div>
@@ -196,18 +198,18 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
           {paymentRequest && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Amount ({assetType})
                 </label>
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-2 mb-3">
                   {['0.1', '0.5', '1', '5'].map((preset) => (
                     <button
                       key={preset}
                       onClick={() => handleAmountChange(preset)}
-                      className={`px-4 py-2 rounded-lg border ${
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                         amount === preset
-                          ? 'bg-purple-600 text-white border-purple-600'
-                          : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white border-[#E0E0E0] text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       {preset} {assetType}
@@ -220,12 +222,12 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
                   onChange={(e) => handleAmountChange(e.target.value)}
                   step="0.1"
                   min="0.01"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2.5 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-gray-900 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Asset Type
                 </label>
                 <select
@@ -234,44 +236,44 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
                     setAssetType(e.target.value as 'SOL' | 'USDC');
                     fetchPaymentRequest(creatorId);
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-2.5 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-gray-900 transition-all"
                 >
                   <option value="SOL">SOL</option>
                   <option value="USDC">USDC</option>
                 </select>
               </div>
 
-              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+              <div className="p-5 bg-gray-50 border border-[#E0E0E0] rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-3">
                   Payment Breakdown
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
+                    <span className="text-gray-600">Total Amount:</span>
+                    <span className="font-semibold text-gray-900">
                       {amount} {assetType}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Platform Fee (4%):</span>
-                    <span className="text-gray-900 dark:text-white">
+                    <span className="text-gray-600">Platform Fee (4%):</span>
+                    <span className="text-gray-900">
                       {paymentRequest.platformFee} {assetType}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-gray-300 dark:border-gray-600">
-                    <span className="text-gray-600 dark:text-gray-400">Creator Receives:</span>
-                    <span className="font-semibold text-purple-600 dark:text-purple-400">
+                  <div className="flex justify-between pt-2 border-t border-[#E0E0E0]">
+                    <span className="text-gray-600">Creator Receives:</span>
+                    <span className="font-semibold text-gray-900">
                       {paymentRequest.creatorAmount} {assetType}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+              <div className="p-4 bg-gray-50 border border-[#E0E0E0] rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">
                   Recipient Address:
                 </p>
-                <p className="text-sm font-mono text-purple-600 dark:text-purple-400">
+                <p className="text-sm font-mono text-gray-900 break-all">
                   {paymentRequest.paymentAddress}
                 </p>
               </div>
@@ -279,7 +281,7 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
               <button
                 onClick={handleSendTip}
                 disabled={loading || !connected}
-                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-lg transition-colors"
               >
                 {loading ? 'Processing...' : `Send ${amount} ${assetType}`}
               </button>
@@ -287,13 +289,13 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
           )}
 
           {error && (
-            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-300">
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-300">
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
               {success}
             </div>
           )}

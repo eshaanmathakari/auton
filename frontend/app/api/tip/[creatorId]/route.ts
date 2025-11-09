@@ -10,10 +10,10 @@ const pendingPayments = new Map();
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { creatorId: string } }
+  { params }: { params: Promise<{ creatorId: string }> }
 ) {
   try {
-    const { creatorId } = params;
+    const { creatorId } = await params;
     const amount = parseFloat(req.nextUrl.searchParams.get('amount') || '0.1');
     const assetType = req.nextUrl.searchParams.get('assetType') || 'SOL';
 
@@ -129,10 +129,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { creatorId: string } }
+  { params }: { params: Promise<{ creatorId: string }> }
 ) {
   try {
-    const { creatorId } = params;
+    const { creatorId } = await params;
     const { signature, paymentId, fromAddress } = await req.json();
 
     if (!signature) {

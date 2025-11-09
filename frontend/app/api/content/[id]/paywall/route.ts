@@ -1,8 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import database from '../../../../../../lib/database';
-import { generatePaymentRequest, verifyPayment } from '../../../../../../lib/utils/payment';
-import { createAccessToken } from '../../../../../../lib/utils/accessToken';
+import database from '../../../../../lib/database';
+import { generatePaymentRequest, verifyPayment } from '../../../../../lib/utils/payment';
+import { createAccessToken } from '../../../../../lib/utils/accessToken';
 
 const PAYMENT_TTL_MINUTES = parseInt(process.env.PAYMENT_TTL_MINUTES || '10', 10);
 const ACCESS_TOKEN_TTL_SECONDS = parseInt(process.env.ACCESS_TOKEN_TTL_SECONDS || '300', 10);
@@ -37,10 +37,10 @@ function sanitizeContent(content: any) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { contentId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { contentId } = params;
+    const { id: contentId } = await params;
     const buyerPubkey = req.nextUrl.searchParams.get('buyerPubkey');
 
     const content = database.getContent(contentId);
@@ -91,10 +91,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { contentId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { contentId } = params;
+    const { id: contentId } = await params;
     const { paymentId, signature, buyerPubkey } = await req.json();
 
     if (!paymentId || !signature || !buyerPubkey) {

@@ -33,10 +33,10 @@ function sanitizeContent(content: any) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { creatorId: string } }
+  { params }: { params: Promise<{ creatorId: string }> }
 ) {
   try {
-    const { creatorId } = params;
+    const { creatorId } = await params;
     const contentList = database.listContent({ creatorId }).map(sanitizeContent);
     return NextResponse.json({ content: contentList });
   } catch (error: any) {

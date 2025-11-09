@@ -1,9 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import database from '../../../../../../lib/database';
-import { verifyAccessToken } from '../../../../../../lib/utils/accessToken';
-import { readObject } from '../../../../../../lib/storage/storageProvider';
-import { decryptBuffer } from '../../../../../../lib/utils/encryption';
+import database from '../../../../../lib/database';
+import { verifyAccessToken } from '../../../../../lib/utils/accessToken';
+import { readObject } from '../../../../../lib/storage/storageProvider';
+import { decryptBuffer } from '../../../../../lib/utils/encryption';
 
 function normalizeFileName(name = '') {
   return name.replace(/[^\w.\-]/g, '_');
@@ -11,10 +11,10 @@ function normalizeFileName(name = '') {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { contentId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { contentId } = params;
+    const { id: contentId } = await params;
     const token = req.nextUrl.searchParams.get('token');
 
     if (!token) {
