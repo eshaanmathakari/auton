@@ -48,3 +48,4 @@ coverage/
 *.tmp
 *.temp
 .cache/
+*.pptx
