@@ -244,7 +244,7 @@ export default function CreatorWorkspace() {
 
     if (preview.previewType === 'text' && preview.snippet) {
       return (
-        <p className="text-sm text-gray-700 bg-gray-100 rounded-lg p-3 leading-relaxed">
+        <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 leading-relaxed">
           {preview.snippet}
         </p>
       );
@@ -288,11 +288,11 @@ export default function CreatorWorkspace() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <div className="mb-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">x402 Pay-to-Access</p>
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">x402 Pay-to-Access</p>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3">
               Drop encrypted content, unlock with SOL
             </h1>
-            <p className="text-gray-600 text-lg max-w-3xl leading-relaxed">
+            <p className="text-gray-600 dark:text-gray-300 text-lg max-w-3xl leading-relaxed">
               Upload any premium file, decide whether to surface a spoiler, and let fans unlock it
               instantly. Funds route directly to your wallet—no custody, no refunds, no waiting.
             </p>
@@ -304,8 +304,8 @@ export default function CreatorWorkspace() {
                 onClick={() => setActiveTab('creator')}
                 className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   activeTab === 'creator'
-                    ? 'bg-gray-900 text-white shadow-sm'
-                    : 'bg-white text-gray-700 border border-[#E0E0E0] hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-blue-900 via-blue-600 to-blue-400 text-white shadow-sm dark:from-blue-800 dark:via-blue-500 dark:to-blue-300'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-[#E0E0E0] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 Creator workspace
@@ -321,7 +321,7 @@ export default function CreatorWorkspace() {
                 Explore gated drops
               </button>
             </div>
-            <WalletMultiButton className="!bg-gray-900 hover:!bg-gray-800 !rounded-lg !h-auto !py-2.5 !px-4" />
+            <WalletMultiButton className="!rounded-lg !h-auto !py-2.5 !px-4" />
           </div>
         </div>
 
@@ -329,8 +329,8 @@ export default function CreatorWorkspace() {
           <div
             className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
               status.type === 'success'
-                ? 'border-green-200 bg-green-50 text-green-800'
-                : 'border-red-200 bg-red-50 text-red-700'
+                ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
             }`}
           >
             {status.message}
@@ -339,9 +339,9 @@ export default function CreatorWorkspace() {
 
         {activeTab === 'creator' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm p-8 space-y-6">
+            <section className="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#E0E0E0] dark:border-gray-700 shadow-sm p-8 space-y-6">
               <div>
-                <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                   Creator ID
                 </label>
                 <input
@@ -349,13 +349,13 @@ export default function CreatorWorkspace() {
                   value={creatorId}
                   onChange={(e) => setCreatorId(e.target.value)}
                   placeholder="e.g. wallet prefix or custom handle"
-                  className="w-full rounded-lg border border-[#E0E0E0] bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                  className="w-full rounded-lg border border-[#E0E0E0] dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                 />
               </div>
 
               {!connected && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                     Payout wallet address
                   </label>
                   <input
@@ -363,13 +363,13 @@ export default function CreatorWorkspace() {
                     value={walletAddress}
                     onChange={(e) => setWalletAddress(e.target.value)}
                     placeholder="Provide a Solana address to receive unlocks"
-                    className="w-full rounded-lg border border-[#E0E0E0] bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                    className="w-full rounded-lg border border-[#E0E0E0] dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                   />
                 </div>
               )}
 
               <div>
-                <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                   Drop title
                 </label>
                 <input
@@ -377,12 +377,12 @@ export default function CreatorWorkspace() {
                   value={form.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   placeholder="Name of your gated content"
-                  className="w-full rounded-lg border border-[#E0E0E0] bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                  className="w-full rounded-lg border border-[#E0E0E0] dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                   Description
                 </label>
                 <textarea
@@ -396,7 +396,7 @@ export default function CreatorWorkspace() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                     Price ({form.assetType})
                   </label>
                   <input
@@ -409,7 +409,7 @@ export default function CreatorWorkspace() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                     Asset
                   </label>
                   <select
@@ -424,7 +424,7 @@ export default function CreatorWorkspace() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                     Content type
                   </label>
                   <select
@@ -449,7 +449,7 @@ export default function CreatorWorkspace() {
                   {previewModes.map((mode) => (
                     <label
                       key={mode.value}
-                      className="flex items-center gap-3 rounded-lg border border-[#E0E0E0] px-4 py-3 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-3 rounded-lg border border-[#E0E0E0] dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <input
                         type="radio"
@@ -459,13 +459,13 @@ export default function CreatorWorkspace() {
                         onChange={(e) =>
                           handleInputChange('previewMode', e.target.value as FormState['previewMode'])
                         }
-                        className="text-gray-900 focus:ring-gray-900"
+                        className="text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
                       <span>{mode.label}</span>
                     </label>
                   ))}
                   {form.previewMode === 'custom' && (
-                    <div className="space-y-3 rounded-lg border border-dashed border-[#E0E0E0] bg-gray-50 p-4">
+                    <div className="space-y-3 rounded-lg border border-dashed border-[#E0E0E0] dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4">
                       <textarea
                         value={form.previewText}
                         onChange={(e) => handleInputChange('previewText', e.target.value)}
@@ -480,7 +480,7 @@ export default function CreatorWorkspace() {
                         <input
                           type="file"
                           onChange={(e) => setPreviewFile(e.target.files?.[0] || null)}
-                          className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-900 file:text-white hover:file:bg-gray-800 cursor-pointer"
+                          className="w-full text-sm text-gray-600 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-blue-900 file:via-blue-600 file:to-blue-400 file:text-white hover:file:from-blue-800 hover:file:via-blue-500 hover:file:to-blue-300 cursor-pointer"
                         />
                         {previewFile && (
                           <p className="text-xs text-gray-500 mt-2">
@@ -495,7 +495,7 @@ export default function CreatorWorkspace() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">
+                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                     Categories / tags
                   </label>
                   <input
@@ -503,22 +503,22 @@ export default function CreatorWorkspace() {
                     value={form.categoriesInput}
                     onChange={(e) => handleInputChange('categoriesInput', e.target.value)}
                     placeholder="music, behind-the-scenes, code drop"
-                    className="w-full rounded-lg border border-[#E0E0E0] bg-white px-4 py-2.5 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                    className="w-full rounded-lg border border-[#E0E0E0] dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
                   />
                 </div>
-                <label className="inline-flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+                <label className="inline-flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.allowDownload}
                     onChange={(e) => handleInputChange('allowDownload', e.target.checked)}
-                    className="w-4 h-4 text-gray-900 border-[#E0E0E0] rounded focus:ring-gray-900"
+                    className="w-4 h-4 text-blue-600 dark:text-blue-400 border-[#E0E0E0] dark:border-gray-700 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
                   />
                   Allow download after unlock (otherwise just stream inside app)
                 </label>
               </div>
 
-              <div className="rounded-lg border border-dashed border-[#E0E0E0] bg-gray-50 p-5">
-                <label className="text-sm font-semibold text-gray-900 mb-2 block">
+              <div className="rounded-lg border border-dashed border-[#E0E0E0] dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-5">
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2 block">
                   Upload gated file
                 </label>
                 <input
@@ -536,32 +536,32 @@ export default function CreatorWorkspace() {
               <button
                 onClick={handleCreateContent}
                 disabled={loading}
-                className="w-full rounded-lg bg-gray-900 py-3.5 text-white font-semibold shadow-sm hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                className="w-full rounded-lg bg-gradient-to-r from-blue-900 via-blue-600 to-blue-400 dark:from-blue-800 dark:via-blue-500 dark:to-blue-300 py-3.5 text-white font-semibold shadow-sm hover:from-blue-800 hover:via-blue-500 hover:to-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? 'Encrypting...' : 'Encrypt & publish to paywall'}
               </button>
 
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-xs text-amber-900 dark:text-amber-200">
                 ⚠️ On-chain purchases are final. We display a "no refunds" disclaimer to fans right
                 before they unlock.
               </div>
             </section>
 
-            <section className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm p-8 space-y-6">
+            <section className="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#E0E0E0] dark:border-gray-700 shadow-sm p-8 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
                     Your encrypted drops
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Share <code className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{shareBase}/[contentId]</code> with
                     fans.
                   </p>
                 </div>
               </div>
               {creatorContent.length === 0 && (
-                <div className="text-center py-12 border border-dashed border-[#E0E0E0] rounded-lg">
-                  <p className="text-sm text-gray-500">
+                <div className="text-center py-12 border border-dashed border-[#E0E0E0] dark:border-gray-700 rounded-lg">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Upload your first gated file to see it here.
                   </p>
                 </div>
@@ -570,28 +570,28 @@ export default function CreatorWorkspace() {
                 {creatorContent.map((content) => (
                   <div
                     key={content.id}
-                    className="rounded-lg border border-[#E0E0E0] bg-gray-50 p-5 space-y-3 hover:shadow-sm transition-shadow"
+                    className="rounded-lg border border-[#E0E0E0] dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-5 space-y-3 hover:shadow-sm transition-shadow"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                           {content.title}
                         </h3>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mt-0.5">{content.contentKind}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mt-0.5">{content.contentKind}</p>
                       </div>
                       <Link
                         href={`/content/${content.id}`}
-                        className="text-sm text-gray-900 font-medium hover:underline flex items-center gap-1"
+                        className="text-sm text-gray-900 dark:text-blue-400 font-medium hover:underline flex items-center gap-1"
                       >
                         View paywall →
                       </Link>
                     </div>
-                    <p className="text-sm text-gray-600 leading-relaxed">{content.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{content.description}</p>
                     <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="rounded-full bg-gray-900 px-3 py-1.5 text-white font-medium">
+                      <span className="rounded-full bg-gradient-to-r from-blue-900 via-blue-600 to-blue-400 dark:from-blue-800 dark:via-blue-500 dark:to-blue-300 px-3 py-1.5 text-white font-medium">
                         {content.price} {content.assetType}
                       </span>
-                      <span className="rounded-full bg-gray-200 text-gray-700 px-3 py-1.5">
+                      <span className="rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5">
                         Preview: {content.preview?.enabled ? content.preview.mode : 'hidden'}
                       </span>
                       {content.allowDownload ? (
@@ -618,7 +618,7 @@ export default function CreatorWorkspace() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                 Pay-to-access catalog
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Discover demo snippets. Unlock full files instantly with SOL on devnet.
               </p>
             </div>
@@ -653,7 +653,7 @@ export default function CreatorWorkspace() {
               ))}
               {exploreContent.length === 0 && (
                 <div className="col-span-2 text-center py-12 border border-dashed border-[#E0E0E0] rounded-lg">
-                  <p className="text-sm text-gray-500">No drops published yet. Check back soon.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No drops published yet. Check back soon.</p>
                 </div>
               )}
             </div>

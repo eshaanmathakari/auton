@@ -156,8 +156,8 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -166,12 +166,12 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="bg-white rounded-xl border border-[#E0E0E0] shadow-sm p-8">
+        <div className="bg-white dark:bg-[#2a2a2a] rounded-xl border border-[#E0E0E0] dark:border-gray-700 shadow-sm p-8">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Send a Tip
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Support this creator with an instant payment on Solana
             </p>
           </div>
@@ -179,17 +179,17 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
           {mounted && !connected && (
             <div className="mb-6">
               <div className="flex justify-center">
-                <WalletMultiButton className="!bg-gray-900 hover:!bg-gray-800 !rounded-lg !h-auto !py-2.5 !px-4" />
+                <WalletMultiButton className="!rounded-lg !h-auto !py-2.5 !px-4" />
               </div>
-              <p className="mt-4 text-sm text-gray-600 text-center">
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 text-center">
                 Connect your wallet to send a tip
               </p>
             </div>
           )}
 
           {mounted && connected && publicKey && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-sm text-green-800 dark:text-green-200">
                 ✓ Wallet Connected: {publicKey.toString().substring(0, 8)}...
               </p>
             </div>
@@ -198,7 +198,7 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
           {paymentRequest && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Amount ({assetType})
                 </label>
                 <div className="flex gap-2 mb-3">
@@ -208,8 +208,8 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
                       onClick={() => handleAmountChange(preset)}
                       className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                         amount === preset
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'bg-white border-[#E0E0E0] text-gray-700 hover:bg-gray-50'
+                          ? 'bg-gradient-to-r from-blue-900 via-blue-600 to-blue-400 dark:from-blue-800 dark:via-blue-500 dark:to-blue-300 text-white border-transparent'
+                          : 'bg-white dark:bg-gray-800 border-[#E0E0E0] dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                     >
                       {preset} {assetType}
@@ -222,12 +222,12 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
                   onChange={(e) => handleAmountChange(e.target.value)}
                   step="0.1"
                   min="0.01"
-                  className="w-full px-4 py-2.5 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-gray-900 transition-all"
+                  className="w-full px-4 py-2.5 border border-[#E0E0E0] dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Asset Type
                 </label>
                 <select
@@ -236,44 +236,44 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
                     setAssetType(e.target.value as 'SOL' | 'USDC');
                     fetchPaymentRequest(creatorId);
                   }}
-                  className="w-full px-4 py-2.5 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white text-gray-900 transition-all"
+                  className="w-full px-4 py-2.5 border border-[#E0E0E0] dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all"
                 >
                   <option value="SOL">SOL</option>
                   <option value="USDC">USDC</option>
                 </select>
               </div>
 
-              <div className="p-5 bg-gray-50 border border-[#E0E0E0] rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-3">
+              <div className="p-5 bg-gray-50 dark:bg-gray-800/50 border border-[#E0E0E0] dark:border-gray-700 rounded-lg">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Payment Breakdown
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Total Amount:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-600 dark:text-gray-400">Total Amount:</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
                       {amount} {assetType}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Platform Fee (4%):</span>
-                    <span className="text-gray-900">
+                    <span className="text-gray-600 dark:text-gray-400">Platform Fee (4%):</span>
+                    <span className="text-gray-900 dark:text-gray-100">
                       {paymentRequest.platformFee} {assetType}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-[#E0E0E0]">
-                    <span className="text-gray-600">Creator Receives:</span>
-                    <span className="font-semibold text-gray-900">
+                  <div className="flex justify-between pt-2 border-t border-[#E0E0E0] dark:border-gray-700">
+                    <span className="text-gray-600 dark:text-gray-400">Creator Receives:</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
                       {paymentRequest.creatorAmount} {assetType}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 border border-[#E0E0E0] rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-[#E0E0E0] dark:border-gray-700 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                   Recipient Address:
                 </p>
-                <p className="text-sm font-mono text-gray-900 break-all">
+                <p className="text-sm font-mono text-gray-900 dark:text-gray-100 break-all">
                   {paymentRequest.paymentAddress}
                 </p>
               </div>
@@ -281,7 +281,7 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
               <button
                 onClick={handleSendTip}
                 disabled={loading || !connected}
-                className="w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-lg transition-colors"
+                className="w-full bg-gradient-to-r from-blue-900 via-blue-600 to-blue-400 dark:from-blue-800 dark:via-blue-500 dark:to-blue-300 hover:from-blue-800 hover:via-blue-500 hover:to-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-lg transition-colors"
               >
                 {loading ? 'Processing...' : `Send ${amount} ${assetType}`}
               </button>
@@ -289,13 +289,13 @@ export default function TipPage({ params }: { params: Promise<{ creatorId: strin
           )}
 
           {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300">
               {success}
             </div>
           )}
