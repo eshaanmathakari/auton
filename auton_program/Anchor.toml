@@ -6,9 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-auton_program = "CP4u2AjZeWdjjhxuGUsWLFAqyzGLu8cUU3xdeDnzkqyk"
-sponsor_program = "FqvRWFBSiDmN3PBwCfs9YZAhh53goQF2YxYku2b8jVXo"
-vault_governance = "Afe5nZMYr8s63mbbrBCweydXsB4o45ztiKFAA5gmmPvm"
+auton_program = "9Dpgf1nWom5Psp6vwLs1J6WF7dVbySQwk8HhLSqXx62n"
 
 [registry]
 url = "https://api.apr.dev"

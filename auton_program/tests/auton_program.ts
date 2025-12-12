@@ -16,7 +16,17 @@ describe("auton_program", () => {
   const creator1 = web3.Keypair.generate();
   const creator2 = web3.Keypair.generate();
   const creator3 = web3.Keypair.generate();
+  const admin = web3.Keypair.generate(); // Admin wallet for fees
   const allCreators = [creator1, creator2, creator3];
+
+  // Protocol Config PDA
+  const [configPDA] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("config")],
+    program.programId
+  );
+
+  // Fee settings (5%)
+  const FEE_BPS = new anchor.BN(500);
 
   // Dummy encryption for testing purposes
   const encryptionKey = randomBytes(32);
@@ -37,9 +47,9 @@ describe("auton_program", () => {
     return pda;
   };
 
-  before("Fund all test wallets", async () => {
-    // Airdrop SOL to the buyer and all creators to pay for transactions
-    const walletsToFund = [buyer, ...allCreators];
+  before("Fund all test wallets and Initialize Config", async () => {
+    // Airdrop SOL to the buyer, admin, and all creators
+    const walletsToFund = [buyer, admin, ...allCreators];
     for (const wallet of walletsToFund) {
       const sig = await provider.connection.requestAirdrop(
         wallet.publicKey,
@@ -47,6 +57,17 @@ describe("auton_program", () => {
       );
       await provider.connection.confirmTransaction(sig, "confirmed");
     }
+
+    // Initialize Protocol Config
+    await program.methods
+        .initializeConfig(FEE_BPS)
+        .accounts({
+            protocolConfig: configPDA,
+            admin: admin.publicKey,
+            systemProgram: web3.SystemProgram.programId,
+        })
+        .signers([admin])
+        .rpc();
   });
 
   describe("Username Registration", () => {
@@ -230,7 +251,7 @@ describe("auton_program", () => {
   describe("Payment and Access Flow", () => {
     const contentIdToBuy = new anchor.BN(2); // Buy content #2 from creator 1
 
-    it("Lets a buyer purchase content from a creator", async () => {
+    it("Lets a buyer purchase content from a creator, splits fee correctly", async () => {
       const creatorPDA = getCreatorPDA(creator1.publicKey);
       
       const [receiptPDA, _] = web3.PublicKey.findProgramAddressSync(
@@ -243,15 +264,23 @@ describe("auton_program", () => {
       );
 
       const creatorBalanceBefore = await provider.connection.getBalance(creator1.publicKey);
+      const adminBalanceBefore = await provider.connection.getBalance(admin.publicKey);
+
       const creatorAccountData = await program.account.creatorAccount.fetch(creatorPDA);
       const contentPrice = creatorAccountData.content.find(c => c.id.eq(contentIdToBuy)).price;
+
+      // Calculate expected amounts
+      const feeAmount = contentPrice.mul(FEE_BPS).div(new anchor.BN(10000));
+      const creatorAmount = contentPrice.sub(feeAmount);
 
       await program.methods
         .processPayment(contentIdToBuy)
         .accounts({
           paidAccessAccount: receiptPDA,
+          protocolConfig: configPDA,
           creatorAccount: creatorPDA,
           creatorWallet: creator1.publicKey,
+          adminWallet: admin.publicKey,
           buyer: buyer.publicKey,
           systemProgram: web3.SystemProgram.programId,
         })
@@ -263,12 +292,20 @@ describe("auton_program", () => {
       assert.ok(receiptData.buyer.equals(buyer.publicKey));
       assert.ok(receiptData.contentId.eq(contentIdToBuy));
 
-      // 2. Verify the payment
+      // 2. Verify Creator Payment
       const creatorBalanceAfter = await provider.connection.getBalance(creator1.publicKey);
       assert.equal(
         creatorBalanceAfter,
-        creatorBalanceBefore + contentPrice.toNumber(),
-        "Creator did not receive the correct payment"
+        creatorBalanceBefore + creatorAmount.toNumber(),
+        "Creator did not receive the correct payment (should be price - fee)"
+      );
+
+      // 3. Verify Admin Fee
+      const adminBalanceAfter = await provider.connection.getBalance(admin.publicKey);
+      assert.equal(
+        adminBalanceAfter,
+        adminBalanceBefore + feeAmount.toNumber(),
+        "Admin did not receive the correct platform fee"
       );
     });
 
@@ -329,8 +366,10 @@ describe("auton_program", () => {
           .processPayment(nonExistentContentId)
           .accounts({
             paidAccessAccount: receiptPDA,
+            protocolConfig: configPDA, // Added
             creatorAccount: creatorPDA,
             creatorWallet: creator1.publicKey,
+            adminWallet: admin.publicKey, // Added
             buyer: buyer.publicKey,
             systemProgram: web3.SystemProgram.programId,
           })
@@ -343,6 +382,117 @@ describe("auton_program", () => {
         const anchorError = err as anchor.AnchorError;
         assert.equal(anchorError.error.errorCode.code, "ContentNotFound");
         assert.include(anchorError.error.errorMessage, "The specified content was not found in the creator's account.");
+      }
+    });
+  });
+  
+  describe("Relayed Transactions", () => {
+    const relayer = web3.Keypair.generate();
+    const relayedBuyer = web3.Keypair.generate(); // New buyer for this test
+    const contentId = new anchor.BN(2);
+
+    before("Fund Relayer and Buyer", async () => {
+        // Fund Relayer
+        const sig1 = await provider.connection.requestAirdrop(
+            relayer.publicKey,
+            2 * web3.LAMPORTS_PER_SOL
+        );
+        await provider.connection.confirmTransaction(sig1, "confirmed");
+
+        // Fund Buyer (needs SOL to pay for content, even if gas is covered)
+        const sig2 = await provider.connection.requestAirdrop(
+            relayedBuyer.publicKey,
+            5 * web3.LAMPORTS_PER_SOL
+        );
+        await provider.connection.confirmTransaction(sig2, "confirmed");
+    });
+
+    it("Allows a relayer to pay gas for a buyer's purchase", async () => {
+        const creatorPDA = getCreatorPDA(creator1.publicKey);
+        const [receiptPDA] = web3.PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("access"),
+                relayedBuyer.publicKey.toBuffer(),
+                contentId.toArrayLike(Buffer, "le", 8),
+            ],
+            program.programId
+        );
+
+        // 1. Build the instruction (User's intent)
+        const ix = await program.methods
+            .processPayment(contentId)
+            .accounts({
+                paidAccessAccount: receiptPDA,
+                protocolConfig: configPDA,
+                creatorAccount: creatorPDA,
+                creatorWallet: creator1.publicKey,
+                adminWallet: admin.publicKey,
+                buyer: relayedBuyer.publicKey,
+                systemProgram: web3.SystemProgram.programId,
+            })
+            .instruction();
+
+        // 2. Create Transaction
+        const { blockhash } = await provider.connection.getLatestBlockhash();
+        const tx = new web3.Transaction();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = relayer.publicKey; // Relayer pays fee
+        tx.add(ix);
+
+        // 3. User signs (authorizing the purchase)
+        tx.partialSign(relayedBuyer);
+
+        // 4. Relayer signs (authorizing the gas payment)
+        tx.partialSign(relayer);
+
+        // 5. Submit
+        const signature = await provider.connection.sendRawTransaction(tx.serialize());
+        await provider.connection.confirmTransaction(signature, "confirmed");
+
+        // 6. Verify
+        // Check receipt exists and belongs to BUYER (not relayer)
+        const receiptAccount = await program.account.paidAccessAccount.fetch(receiptPDA);
+        assert.ok(receiptAccount.buyer.equals(relayedBuyer.publicKey));
+        assert.ok(receiptAccount.contentId.eq(contentId));
+
+        console.log("   - ✓ Relayed transaction successful!");
+    });
+  });
+
+  describe("Protocol Management", () => {
+    it("Allows admin to update fee percentage", async () => {
+      const NEW_FEE_BPS = new anchor.BN(800); // Change to 8%
+
+      await program.methods
+        .updateConfig(null, NEW_FEE_BPS)
+        .accounts({
+          protocolConfig: configPDA,
+          admin: admin.publicKey,
+        })
+        .signers([admin])
+        .rpc();
+
+      const config = await program.account.protocolConfig.fetch(configPDA);
+      assert.ok(config.feePercentage.eq(NEW_FEE_BPS));
+    });
+
+    it("Prevents unauthorized users from updating config", async () => {
+      const MALICIOUS_FEE = new anchor.BN(0); // Try to set fee to 0%
+
+      try {
+        await program.methods
+          .updateConfig(null, MALICIOUS_FEE)
+          .accounts({
+            protocolConfig: configPDA,
+            admin: buyer.publicKey, // Buyer tries to sign as admin
+          })
+          .signers([buyer])
+          .rpc();
+        assert.fail("Should have failed with Unauthorized");
+      } catch (err) {
+        assert.isTrue(err instanceof anchor.AnchorError);
+        const anchorError = err as anchor.AnchorError;
+        assert.equal(anchorError.error.errorCode.code, "Unauthorized");
       }
     });
   });

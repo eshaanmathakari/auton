@@ -23,7 +23,6 @@ custom-panic = []
 [dependencies]
 anchor-lang = "0.32.1"
 solana-program = "1.18"
-vault_governance = { path = "../vault_governance", features = ["cpi"] }
 
 
 [lints.rust]
