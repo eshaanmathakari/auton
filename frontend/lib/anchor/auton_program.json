@@ -70,6 +70,55 @@
       ]
     },
     {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "protocol_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "initial_fee_percentage",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize_creator",
       "discriminator": [
         29,
@@ -159,11 +208,33 @@
           }
         },
         {
+          "name": "protocol_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "creator_account",
           "writable": true
         },
         {
           "name": "creator_wallet",
+          "writable": true
+        },
+        {
+          "name": "admin_wallet",
           "writable": true
         },
         {
@@ -180,6 +251,114 @@
         {
           "name": "content_id",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "register_username",
+      "discriminator": [
+        134,
+        54,
+        123,
+        181,
+        28,
+        151,
+        36,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "username_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  110,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "username"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "username",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "update_config",
+      "discriminator": [
+        29,
+        158,
+        252,
+        191,
+        10,
+        83,
+        219,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "protocol_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin_wallet",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "new_fee_percentage",
+          "type": {
+            "option": "u64"
+          }
         }
       ]
     }
@@ -210,6 +389,32 @@
         111,
         44
       ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "UsernameAccount",
+      "discriminator": [
+        120,
+        2,
+        212,
+        44,
+        208,
+        63,
+        20,
+        122
+      ]
     }
   ],
   "errors": [
@@ -222,6 +427,16 @@
       "code": 6001,
       "name": "ContentNotFound",
       "msg": "The specified content was not found in the creator's account."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidUsername",
+      "msg": "Invalid username. Must be 3-32 characters, alphanumeric or underscore only."
+    },
+    {
+      "code": 6003,
+      "name": "InvalidFeePercentage",
+      "msg": "Invalid fee percentage. Must be <= 10000 (100%)."
     }
   ],
   "types": [
@@ -287,6 +502,38 @@
           {
             "name": "content_id",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_percentage",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UsernameAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "username",
+            "type": "string"
           }
         ]
       }
