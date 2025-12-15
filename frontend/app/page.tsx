@@ -439,7 +439,7 @@ export default function CreatorWorkspace() {
     return (
       <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
         {/* Background Grid/Effect */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-20" 
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-70" 
              style={{ backgroundImage: 'linear-gradient(#222 1px, transparent 1px), linear-gradient(90deg, #222 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
         </div>
 
