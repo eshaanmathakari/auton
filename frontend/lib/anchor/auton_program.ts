@@ -56,6 +56,11 @@ export type AutonProgram = {
           "signer": true
         },
         {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -163,6 +168,11 @@ export type AutonProgram = {
         },
         {
           "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
           "writable": true,
           "signer": true
         },

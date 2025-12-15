@@ -50,6 +50,11 @@
           "signer": true
         },
         {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
@@ -157,6 +162,11 @@
         },
         {
           "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
           "writable": true,
           "signer": true
         },
