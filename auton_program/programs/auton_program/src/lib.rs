@@ -261,21 +261,25 @@ pub struct RegisterUsername<'info> {
 pub struct InitializeCreator<'info> {
     // The PDA account for the creator's content list.
     // `init` means this instruction will create the account.
-    // `payer = creator` means the creator will pay for the account's rent.
+    // `payer = payer` means the payer account will pay for the account's rent.
     // `space` is the initial space allocation. 8 for the discriminator, 32 for the pubkey, 4 for the vector prefix.
     // We will need to reallocate more space later when content is added.
     #[account(
         init,
-        payer = creator,
+        payer = payer,
         space = 8 + 32 + 8 + 4, // discriminator + wallet + counter + vec prefix
         seeds = [b"creator", creator.key().as_ref()],
         bump
     )]
     pub creator_account: Account<'info, CreatorAccount>,
     
-    // The creator, who must sign the transaction.
+    // The creator, who must sign the transaction to authorize account creation.
     #[account(mut)]
     pub creator: Signer<'info>,
+
+    // The account paying for the rent. Can be the creator or a relayer.
+    #[account(mut)]
+    pub payer: Signer<'info>,
     
     // The system program, required by Solana to create accounts.
     pub system_program: Program<'info, System>,
@@ -293,7 +297,7 @@ pub struct AddContent<'info> {
         bump,
         // Approximate: id(8) + title(128) + price(8) + encrypted_cid(100)
         realloc = 8 + 32 + 8 + 4 + (creator_account.content.len() + 1) * (8 + 4 + 128 + 8 + 4 + 100), 
-        realloc::payer = creator,
+        realloc::payer = payer,
         realloc::zero = true
     )]
     pub creator_account: Account<'info, CreatorAccount>,
@@ -301,6 +305,10 @@ pub struct AddContent<'info> {
     // The creator, who must sign.
     #[account(mut)]
     pub creator: Signer<'info>,
+
+    // The account paying for the extra rent. Can be the creator or a relayer.
+    #[account(mut)]
+    pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
