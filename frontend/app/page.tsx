@@ -19,11 +19,9 @@ import CreatorProfile from '@/components/CreatorProfile';
 import { SocialLogin } from '@/components/SocialLogin';
 import { usePrivy } from '@privy-io/react-auth';
 import { usePrivySolanaWallet, usePrivySendTransaction } from '@/lib/privy-solana-adapter';
-import { getUserFriendlyErrorMessage, logWalletError, validateTransaction } from '@/lib/transaction-utils';
-import { Copy, CheckCircle, User, Zap, Settings } from 'lucide-react';
+import { User, CheckCircle, Zap, Settings, Shield, Globe, Coins, Play } from 'lucide-react';
 
 const AUTON_PROGRAM_ID = process.env.NEXT_PUBLIC_AUTON_PROGRAM_ID;
-// Relayer Public Key for Gasless Transactions
 const RELAYER_PUBKEY_STR = process.env.NEXT_PUBLIC_RELAYER_PUBKEY;
 const IPFS_GATEWAY_URL = 'https://ipfs.io/ipfs/';
 
@@ -33,39 +31,7 @@ if (!AUTON_PROGRAM_ID) {
 
 const relayerPubkey = RELAYER_PUBKEY_STR ? new PublicKey(RELAYER_PUBKEY_STR) : null;
 
-type ContentItem = {
-  id: anchor.BN;
-  title: string;
-  description: string;
-  price: anchor.BN;
-  assetType: 'SOL' | 'USDC';
-  contentKind: string;
-  allowDownload: boolean;
-  creatorWalletAddress: PublicKey;
-  preview?: {
-    enabled: boolean;
-    mode: string;
-    snippet?: string | null;
-    previewUrl?: string | null;
-    previewType?: string | null;
-    previewContentType?: string | null;
-  };
-};
-
-type CreatorAccountData = {
-  creatorWallet: PublicKey;
-  lastContentId: anchor.BN;
-  content: ContentItem[];
-  profileCid?: string;
-};
-
-type ProfileData = {
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-  socialLinks: Record<string, string>;
-};
-
+// Re-defining types to ensure self-containment if imports fail
 type FormState = {
   title: string;
   description: string;
@@ -87,7 +53,6 @@ export default function CreatorWorkspace() {
   const privySolanaWallet = usePrivySolanaWallet();
   const privySendTx = usePrivySendTransaction();
   
-  // Use Privy wallet if available, otherwise use wallet adapter
   const publicKey = walletPublicKey || privySolanaWallet?.publicKey || null;
   const isConnected = connected || (privyAuthenticated && !!privySolanaWallet?.publicKey);
   
@@ -104,27 +69,19 @@ export default function CreatorWorkspace() {
   const [creatorAccountData, setCreatorAccountData] = useState<CreatorAccountData | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchingContent, setFetchingContent] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   
-  // Username & Profile state
   const [showUsernameSetup, setShowUsernameSetup] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
-  const [localProfile, setLocalProfile] = useState<ProfileData | null>(null);
-
-  // Sponsorship state
+  const [localProfile, setLocalProfile] = useState<any | null>(null);
   const [showSponsorModal, setShowSponsorModal] = useState(false);
 
-  // Log connection endpoint for debugging
   useEffect(() => {
-    if (connection) {
-      console.log('Using connection endpoint:', (connection as any).rpcEndpoint || 'default');
-    }
-  }, [connection]);
-  
+    setMounted(true);
+  }, []);
+
   const provider = useMemo(() => {
-    // Create a dummy wallet for read-only operations
     const dummyWallet = {
       publicKey: anchor.web3.Keypair.generate().publicKey,
       signAllTransactions: async <T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(txs: T[]): Promise<T[]> => txs,
@@ -144,19 +101,13 @@ export default function CreatorWorkspace() {
       }
     } catch (error) {
       console.error('Failed to initialize program:', error);
-      setStatus({ 
-        type: 'error', 
-        message: 'Failed to initialize program. Check IDL file and program ID.' 
-      });
     }
     return null;
   }, [provider]);
 
   const creatorAccountPDA = useMemo(() => {
-    // Use either wallet adapter or Privy wallet
     const activePublicKey = walletPublicKey || privySolanaWallet?.publicKey;
     if (!activePublicKey || !program) return null;
-    // Use program.programId instead of the constant to ensure it matches the deployed program
     const [pda] = PublicKey.findProgramAddressSync(
       [Buffer.from("creator"), activePublicKey.toBuffer()],
       program.programId
@@ -164,16 +115,13 @@ export default function CreatorWorkspace() {
     return pda;
   }, [walletPublicKey, privySolanaWallet?.publicKey, program]);
 
-  useEffect(() => setMounted(true), []);
-
-  // Reverse lookup to find my username
   const fetchUsername = useCallback(async () => {
     if (!program || !publicKey) return;
     try {
         const accounts = await program.account.usernameAccount.all([
             {
                 memcmp: {
-                    offset: 8, // After discriminator
+                    offset: 8,
                     bytes: publicKey.toBase58(),
                 },
             },
@@ -213,7 +161,7 @@ export default function CreatorWorkspace() {
     setShowUsernameSetup(false);
   };
 
-  const handleProfileUpdate = (profile: ProfileData) => {
+  const handleProfileUpdate = (profile: any) => {
     setLocalProfile(profile);
     setStatus({ type: 'success', message: 'Profile updated!' });
   };
@@ -255,10 +203,8 @@ export default function CreatorWorkspace() {
     setFetchingContent(true);
     try {
       const account = await program.account.creatorAccount.fetch(creatorAccountPDA);
-      console.log("Fetched Creator Account:", account);
       setCreatorAccountData(account);
       
-      // Fetch Profile Metadata if CID exists
       if (account.profileCid) {
         try {
           const response = await fetch(`${IPFS_GATEWAY_URL}${account.profileCid}`);
@@ -271,16 +217,11 @@ export default function CreatorWorkspace() {
         }
       }
     } catch (err: any) {
-      // Check if error is "Account does not exist" (standard Anchor error for missing accounts)
       const errorMessage = err?.message || err?.toString() || '';
       if (errorMessage.includes('Account does not exist') || 
-          errorMessage.includes('AccountNotInitialized') ||
-          errorMessage.includes('InvalidAccountData')) {
-        // This is expected for new creators - not an error
-        console.log('Creator account not initialized yet (new user).');
+          errorMessage.includes('AccountNotInitialized')) {
         setCreatorAccountData(null);
       } else {
-        // Log other errors but don't show alarming messages to user
         console.error('Failed to fetch creator account:', err);
         setCreatorAccountData(null);
       }
@@ -291,15 +232,13 @@ export default function CreatorWorkspace() {
 
   const handleSponsoredContentCreation = async () => {
     if (!publicKey || !program || !creatorAccountPDA) return;
-    
     if (!relayerPubkey) {
         setStatus({ type: 'error', message: 'Sponsorship unavailable: Relayer not configured.' });
         setShowSponsorModal(false);
         return;
     }
-
     if (!signTransaction) {
-        setStatus({ type: 'error', message: 'Your wallet does not support partial signing required for sponsorship.' });
+        setStatus({ type: 'error', message: 'Your wallet does not support partial signing.' });
         setShowSponsorModal(false);
         return;
     }
@@ -360,7 +299,7 @@ export default function CreatorWorkspace() {
         const serializedTx = signedTx.serialize({ requireAllSignatures: false });
         const txBase64 = serializedTx.toString('base64');
 
-        setStatus({ type: 'success', message: 'Sending to Relayer for sponsorship...' });
+        setStatus({ type: 'success', message: 'Sending to Relayer...' });
         const relayResponse = await fetch('/api/sponsor/relay', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -373,12 +312,9 @@ export default function CreatorWorkspace() {
         }
 
         const { signature } = await relayResponse.json();
-        console.log('Sponsored Transaction Signature:', signature);
-        
-        setStatus({ type: 'success', message: 'Transaction Sponsored! Waiting for confirmation...' });
         await connection.confirmTransaction(signature, 'confirmed');
 
-        setStatus({ type: 'success', message: `Content "${form.title}" published (Gas Sponsored)!` });
+        setStatus({ type: 'success', message: `Content "${form.title}" published!` });
         resetForm();
         fetchCreatorContent();
 
@@ -391,34 +327,13 @@ export default function CreatorWorkspace() {
   };
 
   const handleCreateContent = async () => {
-    if (!publicKey) {
-      setStatus({ type: 'error', message: 'Wallet not connected. Please connect your wallet or sign in with Privy.' });
+    if (!publicKey || !isConnected || !program) {
+      setStatus({ type: 'error', message: 'Wallet connection not ready.' });
       return;
     }
-
-    if (!isConnected) {
-      setStatus({ type: 'error', message: 'Wallet connection not ready. Please wait a moment and try again.' });
-      return;
-    }
-
-    if (!program) {
-      setStatus({ type: 'error', message: 'Program not initialized. Please refresh the page.' });
-      return;
-    }
-
-    // Verify we have a way to send transactions
-    if (!privySendTx && !sendTransaction) {
-      setStatus({ type: 'error', message: 'No transaction sender available. Please connect a wallet.' });
-      return;
-    }
-
-    if (!form.title.trim()) {
-      setStatus({ type: 'error', message: 'Please enter a title for your content.' });
-      return;
-    }
-
-    if (!primaryFile) {
-      setStatus({ type: 'error', message: 'Attach a file or media to gate' });
+    if (!privySendTx && !sendTransaction) return;
+    if (!form.title.trim() || !primaryFile) {
+      setStatus({ type: 'error', message: 'Please complete the form.' });
       return;
     }
 
@@ -436,77 +351,20 @@ export default function CreatorWorkspace() {
       setLoading(true);
       setStatus({ type: null, message: '' });
 
-      // Step 1: Upload file to IPFS
-      setStatus({ type: 'success', message: 'Uploading file to IPFS...' });
+      setStatus({ type: 'success', message: 'Uploading to IPFS...' });
       const formData = new FormData();
       formData.append('file', primaryFile);
       
-      let uploadResponse: Response;
-      try {
-        uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-      } catch (fetchError: any) {
-        throw new Error(`Network error during upload: ${fetchError.message}`);
-      }
+      const uploadResponse = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!uploadResponse.ok) throw new Error('Failed to upload.');
+      const { encryptedCid } = await uploadResponse.json();
 
-      if (!uploadResponse.ok) {
-        // Try to parse JSON error, but handle HTML error pages
-        let errorMessage = 'Failed to upload file to IPFS.';
-        try {
-          const errorData = await uploadResponse.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch (parseError) {
-          errorMessage = `Upload failed with status ${uploadResponse.status}.`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      let uploadData: { encryptedCid: string };
-      try {
-        uploadData = await uploadResponse.json();
-      } catch (parseError) {
-        const text = await uploadResponse.text();
-        console.error('Failed to parse upload response:', text.substring(0, 200));
-        throw new Error('Invalid response from upload service. Please try again.');
-      }
-
-      if (!uploadData.encryptedCid) {
-        throw new Error('Upload succeeded but no encrypted CID returned.');
-      }
-
-      const { encryptedCid } = uploadData;
-
-      // Step 2: Initialize creator account if needed
       let currentCreatorAccount = creatorAccountData;
       if (!currentCreatorAccount) {
-        setStatus({ type: 'success', message: 'Initializing creator account...' });
+        setStatus({ type: 'success', message: 'Initializing account...' });
         try {
-          // Verify wallet is connected
-          if (!publicKey) {
-            throw new Error('Wallet not connected. Please connect your wallet first.');
-          }
-
-          if (!creatorAccountPDA) {
-            throw new Error('Failed to derive creator account address.');
-          }
-
-          // Check if account already exists before trying to initialize
-          let accountExists = false;
-          try {
-            await program.account.creatorAccount.fetch(creatorAccountPDA);
-            accountExists = true;
-            currentCreatorAccount = await program.account.creatorAccount.fetch(creatorAccountPDA);
-            setCreatorAccountData(currentCreatorAccount);
-          } catch (fetchError: any) {
-            // Account doesn't exist, proceed with initialization
-          }
-
-          if (accountExists) {
-            // Account already exists, skip initialization
-            setStatus({ type: 'success', message: 'Creator account found. Adding content...' });
-          } else {
+          await program.account.creatorAccount.fetch(creatorAccountPDA);
+        } catch (e) {
             const initTx = new Transaction().add(
               await program.methods
                 .initializeCreator()
@@ -518,294 +376,204 @@ export default function CreatorWorkspace() {
                 })
                 .instruction()
             );
-          
-            // Use getLatestBlockhashAndContext for better blockhash management
-            const {
-              value: { blockhash, lastValidBlockHeight }
-            } = await connection.getLatestBlockhashAndContext('confirmed');
-            
+            const { value: { blockhash, lastValidBlockHeight } } = await connection.getLatestBlockhashAndContext('confirmed');
             initTx.recentBlockhash = blockhash;
             initTx.feePayer = publicKey;
 
             let initSignature: string;
-            if (usePrivyTx && sendSolanaTransaction) {
-              initSignature = await sendSolanaTransaction(initTx);
-            } else {
-              if (!sendTransaction) throw new Error('Wallet not available');
-              initSignature = await sendTransaction(initTx, connection);
+            if (usePrivyTx && sendSolanaTransaction) initSignature = await sendSolanaTransaction(initTx);
+            else {
+                if (!sendTransaction) throw new Error('Wallet not available');
+                initSignature = await sendTransaction(initTx, connection);
             }
-            
-            await connection.confirmTransaction({
-              signature: initSignature,
-              blockhash,
-              lastValidBlockHeight
-            }, 'confirmed');
-            console.log('Transaction confirmed');
-            
-            // Add a delay to allow the RPC node to see the new account
+            await connection.confirmTransaction({ signature: initSignature, blockhash, lastValidBlockHeight }, 'confirmed');
             await new Promise(resolve => setTimeout(resolve, 2000)); 
-
-            currentCreatorAccount = await program.account.creatorAccount.fetch(creatorAccountPDA);
-            setCreatorAccountData(currentCreatorAccount);
-            setStatus({ type: 'success', message: 'Creator account initialized. Adding content...' });
-          }
-        } catch (initError: any) {
-          throw new Error(`Failed to initialize creator account: ${initError.message || 'Unknown error'}`);
         }
       }
 
-      // Step 3: Build and send addContent transaction
-      setStatus({ type: 'success', message: 'Publishing content on-chain...' });
+      setStatus({ type: 'success', message: 'Publishing...' });
       const priceBN = new anchor.BN(parseFloat(form.price) * anchor.web3.LAMPORTS_PER_SOL);
       const encryptedCidBuffer = Buffer.from(encryptedCid, 'hex');
 
-      try {
-        if (!publicKey || !creatorAccountPDA) {
-          throw new Error('Wallet or creator account not available.');
-        }
+      const addContentTx = new Transaction().add(
+        await program.methods
+          .addContent(form.title, priceBN, encryptedCidBuffer)
+          .accounts({
+            creatorAccount: creatorAccountPDA,
+            creator: publicKey,
+            payer: publicKey, 
+          })
+          .instruction()
+      );
 
-        const addContentTx = new Transaction().add(
-          await program.methods
-            .addContent(form.title, priceBN, encryptedCidBuffer)
-            .accounts({
-              creatorAccount: creatorAccountPDA,
-              creator: publicKey,
-              payer: publicKey, 
-            })
-            .instruction()
-        );
+      const { value: { blockhash, lastValidBlockHeight } } = await connection.getLatestBlockhashAndContext('confirmed');
+      addContentTx.recentBlockhash = blockhash;
+      addContentTx.feePayer = publicKey;
 
-        // Use getLatestBlockhashAndContext for better blockhash management
-        const {
-          value: { blockhash, lastValidBlockHeight }
-        } = await connection.getLatestBlockhashAndContext('confirmed');
-        
-        addContentTx.recentBlockhash = blockhash;
-        addContentTx.feePayer = publicKey;
-
-        let addContentSignature: string;
-        if (usePrivyTx && sendSolanaTransaction) {
-          addContentSignature = await sendSolanaTransaction(addContentTx);
-        } else {
+      let addContentSignature: string;
+      if (usePrivyTx && sendSolanaTransaction) addContentSignature = await sendSolanaTransaction(addContentTx);
+      else {
           if (!sendTransaction) throw new Error('Wallet not available');
           addContentSignature = await sendTransaction(addContentTx, connection);
-        }
-        
-        await connection.confirmTransaction({
-          signature: addContentSignature,
-          blockhash,
-          lastValidBlockHeight
-        }, 'confirmed');
-      } catch (addContentError: any) {
-        throw new Error(`Failed to publish content: ${addContentError.message || 'Unknown error'}`);
       }
+      
+      await connection.confirmTransaction({ signature: addContentSignature, blockhash, lastValidBlockHeight }, 'confirmed');
 
-      setStatus({
-        type: 'success',
-        message: `Content "${form.title}" published on-chain!`,
-      });
+      setStatus({ type: 'success', message: `Content published!` });
       resetForm();
       fetchCreatorContent();
     } catch (error: any) {
       console.error('Failed to create content:', error);
-      const errorMessage = error?.message || error?.toString() || 'Something went wrong';
-      setStatus({ type: 'error', message: errorMessage });
+      setStatus({ type: 'error', message: error.message || 'Something went wrong' });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  if (!mounted) return null;
 
-  const handleDragLeave = () => {
-    // removed - drag state handled in modal
-  };
+  // ------------------------------------------------------------------
+  // 1. HERO VIEW (Unauthenticated)
+  // ------------------------------------------------------------------
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
+        {/* Background Grid/Effect */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-20" 
+             style={{ backgroundImage: 'linear-gradient(#222 1px, transparent 1px), linear-gradient(90deg, #222 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
+        </div>
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    // removed - drag state handled in modal
-  };
+        {/* Hero Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 text-center space-y-12">
+          
+          {/* Main Title - Glitch Effect Potential */}
+          <div className="space-y-4">
+            <h1 className="font-pixel text-[8rem] md:text-[10rem] leading-none text-transparent bg-clip-text bg-gradient-to-br from-neon-green to-neon-blue drop-shadow-[0_0_15px_rgba(87,242,135,0.5)]">
+              AUTON
+            </h1>
+            <p className="font-mono text-zinc-400 text-lg md:text-2xl tracking-widest uppercase">
+              Decentralized . Encrypted . Forever
+            </p>
+          </div>
 
+          {/* Connect Button */}
+          <div className="w-full max-w-md">
+             <div className="retro-card border-neon-green/30 bg-black/50 backdrop-blur-sm p-8 flex flex-col gap-6 items-center">
+                <div className="flex items-center gap-2 text-neon-green font-pixel text-xl animate-pulse">
+                   <Play className="w-6 h-6 fill-current" />
+                   <span>READY TO START?</span>
+                </div>
+                <div className="w-full">
+                   <WalletMultiButton className="!w-full !justify-center !font-pixel !text-2xl !h-16 !bg-neon-green !text-black !border-none hover:!bg-white hover:!scale-105 transition-all !uppercase" />
+                </div>
+                <div className="text-zinc-500 font-mono text-xs">
+                   <p>POWERED BY SOLANA • X402 PROTOCOL</p>
+                </div>
+             </div>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full text-left">
+             {[
+               { icon: Shield, title: "ENCRYPTED", desc: "AES-256-GCM encryption on IPFS. Only payers get the key." },
+               { icon: Coins, title: "DIRECT PAY", desc: "0% Middleman fees on tips. 99.25% on unlocks." },
+               { icon: Globe, title: "DECENTRALIZED", desc: "Unstoppable content. You own your keys and data." }
+             ].map((feature, idx) => (
+               <div key={idx} className="retro-card group hover:bg-zinc-900">
+                  <feature.icon className="w-8 h-8 text-neon-pink mb-4 group-hover:scale-110 transition-transform" />
+                  <h3 className="font-pixel text-2xl text-white mb-2">{feature.title}</h3>
+                  <p className="font-mono text-sm text-zinc-400">{feature.desc}</p>
+               </div>
+             ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // 2. DASHBOARD VIEW (Authenticated)
+  // ------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Navigation */}
+    <div className="min-h-screen bg-background">
       <DashboardNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onCreateClick={() => setIsCreateModalOpen(true)}
       />
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
-        {/* Hero Header */}
-        <div className="mb-12 text-center">
-          <div className="inline-block mb-4">
-            <span className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
-              x402 Pay-to-Access Protocol
-            </span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-white bg-clip-text text-transparent mb-4">
-            Creator Hub
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto leading-relaxed">
-            Upload premium content, set your price, and earn directly.
-            <br></br><span className="font-semibold text-blue-600 dark:text-blue-400"> Encrypted. Instant. On-chain.</span>
-          </p>
-        </div>
-
-        {/* Wallet Connection */}
-        <div className="flex flex-col items-center gap-4 mb-8">
-          {!isConnected && (
-            <div className="w-full max-w-md mb-4">
-              <SocialLogin 
-                onSuccess={(walletAddress) => {
-                  console.log('Wallet created:', walletAddress);
-                  // Refresh page or update state
-                  window.location.reload();
-                }}
-                onError={(error) => {
-                  setStatus({ type: 'error', message: error.message });
-                }}
-              />
-            </div>
-          )}
-          
-          {!isConnected && (
-            <div className="relative w-full max-w-md my-4">
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 text-gray-500 dark:text-gray-400">
-                  or connect existing wallet
-                </span>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        
+        {/* User Profile Bar */}
+        <div className="retro-card mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+           <div className="flex items-center gap-6">
+              <div className="w-20 h-20 bg-zinc-800 border-2 border-neon-yellow flex items-center justify-center overflow-hidden">
+                 {localProfile?.avatarUrl ? (
+                    <img src={localProfile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                 ) : (
+                    <User className="w-10 h-10 text-neon-yellow" />
+                 )}
               </div>
-            </div>
-          )}
-          
-          <WalletMultiButton className="!bg-gradient-to-r !from-blue-600 !to-purple-600 hover:!from-blue-700 hover:!to-purple-700 !rounded-xl !shadow-lg hover:!shadow-xl !transition-all !duration-200" />
-          
-          {/* Profile Badge */}
-          {isConnected && (
-            <div className="flex items-center gap-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-full px-4 py-2 shadow-md border border-gray-200/50 dark:border-gray-700/50">
-              {localProfile?.avatarUrl ? (
-                <img 
-                  src={localProfile.avatarUrl} 
-                  alt="Avatar" 
-                  className="w-6 h-6 rounded-full object-cover"
-                />
-              ) : (
-                <User className="w-4 h-4 text-purple-600" />
-              )}
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {localProfile?.displayName || username || (publicKey ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}` : 'Creator')}
-              </span>
-              <div className="flex items-center gap-1">
-                {!username && (
-                  <button
-                    onClick={() => setShowUsernameSetup(true)}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Set username
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowProfileEditor(true)}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Edit profile"
-                >
-                  <Settings className="w-4 h-4 text-gray-500" />
-                </button>
+              <div>
+                 <h2 className="font-pixel text-4xl text-white">
+                    {localProfile?.displayName || username || 'UNNAMED'}
+                 </h2>
+                 <div className="flex items-center gap-2 text-zinc-400 font-mono text-sm">
+                    <span>{publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}</span>
+                    {!username && (
+                       <button onClick={() => setShowUsernameSetup(true)} className="text-neon-blue hover:underline">
+                          [SET USERNAME]
+                       </button>
+                    )}
+                 </div>
               </div>
-            </div>
-          )}
+           </div>
+           
+           <div className="flex gap-4">
+              <button 
+                onClick={() => setShowProfileEditor(true)}
+                className="retro-btn text-sm px-4 py-2"
+              >
+                 EDIT PROFILE
+              </button>
+              <button 
+                onClick={copyShareLink}
+                className="retro-btn text-sm px-4 py-2 border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-white"
+              >
+                 {copiedLink ? 'COPIED!' : 'kv SHARE LINK'}
+              </button>
+           </div>
         </div>
-
-        {/* Username Setup Modal */}
-        {showUsernameSetup && isConnected && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <UsernameSetup
-              onUsernameSet={handleUsernameSet}
-              onSkip={handleSkipUsername}
-              existingUsername={username}
-            />
-          </div>
-        )}
-
-        {/* Profile Editor Modal */}
-        {showProfileEditor && isConnected && (
-          <CreatorProfile
-            onClose={() => setShowProfileEditor(false)}
-            onUpdate={handleProfileUpdate}
-            initialProfile={localProfile}
-          />
-        )}
-
-        {/* Sponsorship Modal */}
-        {showSponsorModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-200 dark:border-purple-700/50 p-6 max-w-md w-full text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                    <Zap className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Not enough SOL for gas?
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">
-                    We noticed you don't have enough SOL to pay for the network fees. 
-                    <br />
-                    <strong>We can sponsor this transaction for you!</strong>
-                </p>
-                <div className="flex gap-3 pt-2">
-                    <button
-                        onClick={() => setShowSponsorModal(false)}
-                        className="flex-1 py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSponsoredContentCreation}
-                        className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold hover:from-purple-700 hover:to-blue-700 transition-all"
-                    >
-                        Accept Sponsorship
-                    </button>
-                </div>
-            </div>
-          </div>
-        )}
 
         {/* Status Messages */}
         {status.type && (
-          <div
-            className={`mb-8 rounded-xl border-2 px-6 py-4 text-sm font-medium shadow-lg backdrop-blur-sm transition-all ${
-              status.type === 'success'
-                ? 'border-green-400 bg-green-50/90 dark:bg-green-900/20 text-green-800 dark:text-green-300'
-                : 'border-red-400 bg-red-50/90 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {status.type === 'success' ? (
-                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              <span>{status.message}</span>
-            </div>
+          <div className={`mb-8 p-4 border font-mono text-sm ${
+            status.type === 'success' 
+              ? 'border-neon-green bg-neon-green/10 text-neon-green' 
+              : 'border-neon-pink bg-neon-pink/10 text-neon-pink'
+          }`}>
+            <p className="flex items-center gap-2">
+               {status.type === 'success' ? <CheckCircle className="w-4 h-4"/> : <Zap className="w-4 h-4"/>}
+               {status.message}
+            </p>
           </div>
         )}
 
-        {/* Dashboard Tab */}
+        {/* Tab Content */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
-            {/* Metrics */}
-            <DashboardMetrics content={creatorAccountData?.content || []} loading={fetchingContent} creatorId={creatorId} program={program} connection={connection} />
+            <DashboardMetrics 
+               content={creatorAccountData?.content || []} 
+               loading={fetchingContent} 
+               creatorId={creatorId} 
+               program={program} 
+               connection={connection} 
+            />
 
-            {/* Published Drops Section */}
-            <section className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Your Published Drops</h2>
+            <section>
+              <h3 className="font-pixel text-3xl text-white mb-6 flex items-center gap-2">
+                 <span className="text-neon-green">#</span> PUBLISHED DROPS
+              </h3>
               <PublishedDropsList
                 content={creatorAccountData?.content || []}
                 loading={fetchingContent}
@@ -817,11 +585,10 @@ export default function CreatorWorkspace() {
           </div>
         )}
 
-        {/* Gallery Tab */}
         {activeTab === 'gallery' && <GallerySection />}
       </div>
 
-      {/* Create Drop Modal */}
+      {/* Modals */}
       <CreateDropModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -833,6 +600,56 @@ export default function CreatorWorkspace() {
         loading={loading}
         connected={connected}
       />
+
+      {showUsernameSetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <UsernameSetup
+            onUsernameSet={handleUsernameSet}
+            onSkip={handleSkipUsername}
+            existingUsername={username}
+          />
+        </div>
+      )}
+
+      {showProfileEditor && (
+        <CreatorProfile
+          onClose={() => setShowProfileEditor(false)}
+          onUpdate={handleProfileUpdate}
+          initialProfile={localProfile}
+        />
+      )}
+
+      {showSponsorModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="retro-card max-w-md w-full text-center space-y-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neon-yellow/20 rounded-full border border-neon-yellow">
+                    <Zap className="w-8 h-8 text-neon-yellow" />
+                </div>
+                <h2 className="font-pixel text-2xl text-white">
+                    INSUFFICIENT GAS
+                </h2>
+                <p className="font-mono text-zinc-400 text-sm">
+                    You don't have enough SOL for the network fee.
+                    <br />
+                    <span className="text-white">We can sponsor this transaction for you!</span>
+                </p>
+                <div className="flex gap-4 pt-2">
+                    <button
+                        onClick={() => setShowSponsorModal(false)}
+                        className="retro-btn flex-1"
+                    >
+                        CANCEL
+                    </button>
+                    <button
+                        onClick={handleSponsoredContentCreation}
+                        className="retro-btn-primary flex-1"
+                    >
+                        ACCEPT SPONSOR
+                    </button>
+                </div>
+            </div>
+          </div>
+      )}
     </div>
   );
 }
