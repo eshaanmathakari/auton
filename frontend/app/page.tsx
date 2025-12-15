@@ -8,6 +8,12 @@ import * as anchor from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { AutonProgram } from '@/lib/anchor/auton_program';
 import IDL from '@/lib/anchor/auton_program.json';
+import { DashboardNav, type DashboardTab } from '@/components/DashboardNav';
+import { DashboardMetrics } from '@/components/DashboardMetrics';
+import { PublishedDropsList } from '@/components/PublishedDropsList';
+import { CreateDropModal, type FormState } from '@/components/CreateDropModal';
+import { GallerySection } from '@/components/GallerySection';
+import type { ContentItem, CreatorAccountData } from '@/types/content';
 import UsernameSetup from '@/components/UsernameSetup';
 import CreatorProfile from '@/components/CreatorProfile';
 import { SocialLogin } from '@/components/SocialLogin';
@@ -86,6 +92,8 @@ export default function CreatorWorkspace() {
   const isConnected = connected || (privyAuthenticated && !!privySolanaWallet?.publicKey);
   
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashboardTab>('dashboard');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [creatorId, setCreatorId] = useState('');
   const [form, setForm] = useState<FormState>(defaultFormState);
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
@@ -238,6 +246,7 @@ export default function CreatorWorkspace() {
   const resetForm = () => {
     setForm(defaultFormState);
     setPrimaryFile(null);
+    setIsCreateModalOpen(false);
   };
 
   const fetchCreatorContent = async () => {
@@ -608,24 +617,27 @@ export default function CreatorWorkspace() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
   };
 
   const handleDragLeave = () => {
-    setIsDragging(false);
+    // removed - drag state handled in modal
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      setPrimaryFile(files[0]);
-    }
+    // removed - drag state handled in modal
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {/* Navigation */}
+      <DashboardNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onCreateClick={() => setIsCreateModalOpen(true)}
+      />
+
+      {/* Main Content */}
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         {/* Hero Header */}
         <div className="mb-12 text-center">
@@ -764,9 +776,11 @@ export default function CreatorWorkspace() {
         {/* Status Messages */}
         {status.type && (
           <div
-            className={`mb-8 rounded-xl border-2 px-6 py-4 text-sm font-medium shadow-lg backdrop-blur-sm transition-all ${status.type === 'success'
+            className={`mb-8 rounded-xl border-2 px-6 py-4 text-sm font-medium shadow-lg backdrop-blur-sm transition-all ${
+              status.type === 'success'
                 ? 'border-green-400 bg-green-50/90 dark:bg-green-900/20 text-green-800 dark:text-green-300'
-                : 'border-red-400 bg-red-50/90 dark:bg-red-900/20 text-red-800 dark:text-red-300'}`}
+                : 'border-red-400 bg-red-50/90 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+            }`}
           >
             <div className="flex items-center gap-3">
               {status.type === 'success' ? (
@@ -783,6 +797,28 @@ export default function CreatorWorkspace() {
           </div>
         )}
 
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-8">
+            {/* Metrics */}
+            <DashboardMetrics content={creatorAccountData?.content || []} loading={fetchingContent} creatorId={creatorId} program={program} connection={connection} />
+
+            {/* Published Drops Section */}
+            <section className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Your Published Drops</h2>
+              <PublishedDropsList
+                content={creatorAccountData?.content || []}
+                loading={fetchingContent}
+                creatorId={creatorId}
+                connected={connected}
+                program={program}
+              />
+            </section>
+          </div>
+        )}
+
+        {/* Gallery Tab */}
+        {activeTab === 'gallery' && <GallerySection />}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Create Content Form */}
           <section className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-8 space-y-6 hover:shadow-2xl transition-shadow">
@@ -1011,6 +1047,19 @@ export default function CreatorWorkspace() {
           </section>
         </div>
       </div>
+
+      {/* Create Drop Modal */}
+      <CreateDropModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateContent}
+        form={form}
+        onFormChange={handleInputChange}
+        primaryFile={primaryFile}
+        onFileChange={setPrimaryFile}
+        loading={loading}
+        connected={connected}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -151,6 +152,14 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     }
   }, [resolvedWalletAddress]);
 
+  if (!creatorPubkey) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Invalid creator id.</p>
+      </div>
+    );
+  }
+
   const creatorAccountPDA = useMemo(() => {
     if (!creatorPubkey || !programId) return null;
     const [pda] = PublicKey.findProgramAddressSync(
@@ -171,6 +180,28 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
       fetchCreatorContent();
     }
   }, [program, creatorAccountPDA, resolvedWalletAddress]);
+
+  // If the page is opened with ?focus=<contentId>, auto-attempt unlock/display
+  const searchParams = useSearchParams();
+  const [autoFocused, setAutoFocused] = useState<number | null>(null);
+
+  useEffect(() => {
+    const focus = searchParams?.get('focus');
+    if (!focus) return;
+    const id = Number(focus);
+    if (!id || !creatorAccount) return;
+
+    // Prevent repeated attempts
+    if (autoFocused === id) return;
+
+    const item = creatorAccount.content.find((c) => (c.id as anchor.BN).toNumber() === id);
+    if (item) {
+      // Try to unlock the item (this will handle payments if needed)
+      // Delay slightly to ensure UI is ready
+      setTimeout(() => handleUnlockContent(item), 300);
+      setAutoFocused(id);
+    }
+  }, [searchParams, creatorAccount, autoFocused]);
 
   const fetchCreatorContent = async () => {
     if (!program || !creatorAccountPDA) return;
@@ -258,6 +289,8 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
         const protocolConfig = await program.account.protocolConfig.fetch(configPDA);
         const adminWallet = protocolConfig.adminWallet;
 
+        if (!creatorAccountPDA) throw new Error('Creator account PDA not found');
+
         // Derive Receipt PDA
         const [paidAccessPDA] = PublicKey.findProgramAddressSync(
           [
@@ -279,7 +312,7 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
             adminWallet: adminWallet,
             buyer: publicKey,
             systemProgram: SystemProgram.programId,
-          })
+          } as any)
           .instruction();
         
         const transaction = new Transaction().add(ix);

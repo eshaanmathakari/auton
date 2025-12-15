@@ -166,6 +166,8 @@ pub mod auton_program {
         let access_account = &mut ctx.accounts.paid_access_account;
         access_account.buyer = *ctx.accounts.buyer.key;
         access_account.content_id = content_id;
+        access_account.creator = creator_account.creator_wallet;
+        access_account.created_at = Clock::get()?.unix_timestamp;
         
         msg!("Payment processed: {} lamports (fee: {}, creator: {})", 
              total_price, fee_amount, creator_amount);
@@ -211,6 +213,8 @@ pub struct ContentItem {
 pub struct PaidAccessAccount {
     pub buyer: Pubkey,
     pub content_id: u64, // ID of the content this receipt grants access to
+    pub creator: Pubkey, // Store which creator this receipt is for
+    pub created_at: i64, // Unix timestamp for when the receipt was created
 }
 
 
@@ -357,7 +361,7 @@ pub struct ProcessPayment<'info> {
     #[account(
         init,
         payer = buyer,
-        space = 8 + 32 + 8, // discriminator + buyer pubkey + content_id
+        space = 8 + 32 + 8 + 32 + 8, // discriminator + buyer pubkey + content_id + creator pubkey + timestamp
         seeds = [b"access", buyer.key().as_ref(), &content_id.to_le_bytes()],
         bump
     )]
