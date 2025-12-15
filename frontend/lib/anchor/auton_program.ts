@@ -382,6 +382,60 @@ export type AutonProgram = {
           }
         }
       ]
+    },
+    {
+      "name": "updateProfile",
+      "discriminator": [
+        98,
+        67,
+        99,
+        206,
+        86,
+        115,
+        175,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "creatorAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  101,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "profileCid",
+          "type": "string"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -507,6 +561,10 @@ export type AutonProgram = {
                 }
               }
             }
+          },
+          {
+            "name": "profileCid",
+            "type": "string"
           }
         ]
       }

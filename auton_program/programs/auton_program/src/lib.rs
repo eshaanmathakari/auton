@@ -103,6 +103,14 @@ pub mod auton_program {
         Ok(())
     }
 
+    // Updates the creator's profile metadata CID
+    pub fn update_profile(ctx: Context<UpdateProfile>, profile_cid: String) -> Result<()> {
+        let creator_account = &mut ctx.accounts.creator_account;
+        require!(creator_account.creator_wallet == *ctx.accounts.creator.key, CustomError::Unauthorized);
+        creator_account.profile_cid = profile_cid;
+        Ok(())
+    }
+
     // Records that a user has paid for a specific piece of content.
     // This transfers SOL from buyer to creator (minus fee) and admin (fee), then creates an access receipt.
     pub fn process_payment(ctx: Context<ProcessPayment>, content_id: u64) -> Result<()> {
@@ -188,6 +196,7 @@ pub struct CreatorAccount {
     pub creator_wallet: Pubkey,
     pub last_content_id: u64, // Counter for generating unique content IDs
     pub content: Vec<ContentItem>,
+    pub profile_cid: String, // IPFS CID for profile metadata (bio, avatar, etc.)
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -271,7 +280,7 @@ pub struct InitializeCreator<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + 32 + 8 + 4, // discriminator + wallet + counter + vec prefix
+        space = 8 + 32 + 8 + 4 + 4, // discriminator + wallet + counter + vec prefix + string prefix (profile_cid)
         seeds = [b"creator", creator.key().as_ref()],
         bump
     )]
@@ -300,7 +309,8 @@ pub struct AddContent<'info> {
         seeds = [b"creator", creator.key().as_ref()],
         bump,
         // Approximate: id(8) + title(128) + price(8) + encrypted_cid(100)
-        realloc = 8 + 32 + 8 + 4 + (creator_account.content.len() + 1) * (8 + 4 + 128 + 8 + 4 + 100), 
+        // PLUS profile_cid current length
+        realloc = 8 + 32 + 8 + 4 + (creator_account.content.len() + 1) * (8 + 4 + 128 + 8 + 4 + 100) + (4 + creator_account.profile_cid.len()), 
         realloc::payer = payer,
         realloc::zero = true
     )]
@@ -313,6 +323,28 @@ pub struct AddContent<'info> {
     // The account paying for the extra rent. Can be the creator or a relayer.
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(profile_cid: String)]
+pub struct UpdateProfile<'info> {
+    #[account(
+        mut,
+        seeds = [b"creator", creator.key().as_ref()],
+        bump,
+        // Reallocate to fit new profile CID length + existing content
+        // Note: Using approximate size for content items again. 
+        // In production, you might want a cleaner way to track size or separate accounts.
+        realloc = 8 + 32 + 8 + 4 + (creator_account.content.len() * (8 + 4 + 128 + 8 + 4 + 100)) + (4 + profile_cid.len()),
+        realloc::payer = creator,
+        realloc::zero = false
+    )]
+    pub creator_account: Account<'info, CreatorAccount>,
+
+    #[account(mut)]
+    pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
