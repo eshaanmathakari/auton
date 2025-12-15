@@ -218,7 +218,7 @@ export default function PaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+    <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
       <div className="w-full max-w-md bg-black border-2 border-zinc-700 shadow-[0_0_50px_rgba(88,101,242,0.15)] relative">
         {renderContent()}
       </div>
