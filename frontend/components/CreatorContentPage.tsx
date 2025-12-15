@@ -33,6 +33,7 @@ type CreatorAccountData = {
   creatorWallet: PublicKey;
   lastContentId: anchor.BN;
   content: ContentItem[];
+  profileCid?: string;
 };
 
 type PaymentDetails = {
@@ -178,6 +179,28 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     try {
       const account = await program.account.creatorAccount.fetch(creatorAccountPDA);
       setCreatorAccount(account);
+
+      // Fetch Profile Metadata if CID exists
+      if (account.profileCid) {
+        try {
+          const response = await fetch(`${IPFS_GATEWAY_URL}${account.profileCid}`);
+          if (response.ok) {
+            const profileData = await response.json();
+            setCreatorProfile({
+                id: resolvedWalletAddress!,
+                username: isUsername ? creatorId : undefined, // Keep username if we resolved from it
+                displayName: profileData.displayName,
+                bio: profileData.bio,
+                avatarUrl: profileData.avatarUrl,
+                socialLinks: profileData.socialLinks,
+                walletAddress: resolvedWalletAddress!,
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load profile metadata:", e);
+        }
+      }
+
     } catch (err: any) {
       console.error('Failed to fetch creator account:', err);
       const msg = err.message || err.toString();
@@ -658,7 +681,7 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
             }}
             contentTitle={selectedContentForPayment.title}
             priceInSol={selectedContentForPayment.price.toNumber() / anchor.web3.LAMPORTS_PER_SOL}
-            creatorUsername={isUsername ? creatorId : null}
+            creatorUsername={creatorProfile?.username || (isUsername ? creatorId : null)}
             creatorWallet={creatorPubkey.toBase58()}
           />
         )}

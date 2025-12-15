@@ -1,10 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
+import { AutonProgram } from '@/lib/anchor/auton_program';
+import IDL from '@/lib/anchor/auton_program.json';
 import { User, Save, X, Link as LinkIcon, Loader2, Camera, Plus, Trash2 } from 'lucide-react';
+import { getUserFriendlyErrorMessage, logWalletError } from '@/lib/transaction-utils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'http://127.0.0.1:8899';
+const AUTON_PROGRAM_ID = process.env.NEXT_PUBLIC_AUTON_PROGRAM_ID;
+
+if (!AUTON_PROGRAM_ID) {
+  throw new Error('AUTON_PROGRAM_ID is not set in environment variables.');
+}
+
+const programId = new PublicKey(AUTON_PROGRAM_ID);
 
 interface CreatorProfileProps {
   onClose: () => void;
@@ -28,7 +40,7 @@ const SOCIAL_PLATFORMS = [
 ];
 
 export default function CreatorProfile({ onClose, onUpdate, initialProfile }: CreatorProfileProps) {
-  const { publicKey } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,6 +54,28 @@ export default function CreatorProfile({ onClose, onUpdate, initialProfile }: Cr
   const [activeSocialInputs, setActiveSocialInputs] = useState<string[]>(
     Object.keys(initialProfile?.socialLinks || {})
   );
+
+  useEffect(() => {
+    if (initialProfile) {
+      setDisplayName(initialProfile.displayName || '');
+      setBio(initialProfile.bio || '');
+      setAvatarUrl(initialProfile.avatarUrl || '');
+      setSocialLinks(initialProfile.socialLinks || {});
+      setActiveSocialInputs(Object.keys(initialProfile.socialLinks || {}));
+    }
+  }, [initialProfile]);
+
+  const connection = useMemo(() => new Connection(SOLANA_RPC_URL, 'confirmed'), []);
+
+  const program = useMemo(() => {
+    const provider = new anchor.AnchorProvider(connection, {
+      publicKey: PublicKey.default,
+      signAllTransactions: async <T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(txs: T[]): Promise<T[]> => txs,
+      signTransaction: async <T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction>(tx: T): Promise<T> => tx,
+    }, { commitment: 'confirmed' });
+    const idl = IDL as anchor.Idl;
+    return new anchor.Program(idl, provider) as anchor.Program<AutonProgram>;
+  }, [connection]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,39 +98,67 @@ export default function CreatorProfile({ onClose, onUpdate, initialProfile }: Cr
         }
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/creators/${publicKey.toBase58()}/profile`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            displayName: displayName.trim() || null,
-            bio: bio.trim() || null,
-            avatarUrl: avatarUrl.trim() || null,
-            socialLinks: filteredSocialLinks,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update profile');
-      }
-
-      setSuccess('Profile updated successfully!');
-      onUpdate({
+      const profileData = {
         displayName: displayName.trim() || null,
         bio: bio.trim() || null,
         avatarUrl: avatarUrl.trim() || null,
         socialLinks: filteredSocialLinks,
+      };
+
+      // 1. Upload Profile Data to IPFS (Public)
+      const profileBlob = new Blob([JSON.stringify(profileData)], { type: 'application/json' });
+      const formData = new FormData();
+      formData.append('file', profileBlob, 'profile.json');
+
+      const uploadResponse = await fetch('/api/upload?public=true', {
+        method: 'POST',
+        body: formData,
       });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload profile data to IPFS');
+      }
+
+      const { cid } = await uploadResponse.json();
+      console.log('Profile uploaded to IPFS:', cid);
+
+      // 2. Call Smart Contract to update profile CID
+      const [creatorAccountPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("creator"), publicKey.toBuffer()],
+        programId
+      );
+
+      // Check if creator account exists
+      try {
+        await program.account.creatorAccount.fetch(creatorAccountPDA);
+      } catch (e) {
+        throw new Error("You must initialize your creator account (publish first drop) before setting a profile.");
+      }
+
+      const ix = await program.methods
+        .updateProfile(cid)
+        .accounts({
+          creatorAccount: creatorAccountPDA,
+          creator: publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      const transaction = new Transaction().add(ix);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      const signature = await sendTransaction(transaction, connection);
+      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+
+      setSuccess('Profile updated successfully!');
+      onUpdate(profileData);
       
-      // Close after a brief delay to show success message
       setTimeout(() => onClose(), 1500);
     } catch (err: any) {
       console.error('Error updating profile:', err);
-      setError(err.message || 'Failed to update profile');
+      setError(getUserFriendlyErrorMessage(err) || 'Failed to update profile');
     } finally {
       setIsSubmitting(false);
     }
