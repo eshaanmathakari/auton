@@ -2,24 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import PinataClient from '@pinata/sdk';
 import { createCipheriv, randomBytes, createDecipheriv } from 'crypto';
 
-const PINATA_API_KEY = process.env.PINATA_API_KEY;
-const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
-const ENCRYPTION_SECRET_KEY = process.env.ENCRYPTION_SECRET_KEY;
-
-if (!PINATA_API_KEY || !PINATA_API_SECRET) {
-  throw new Error('Pinata API keys are not set in environment variables.');
+// Lazy initialization - validate and create clients only when needed
+function getPinataClient(): PinataClient {
+  const PINATA_API_KEY = process.env.PINATA_API_KEY;
+  const PINATA_API_SECRET = process.env.PINATA_API_SECRET;
+  
+  if (!PINATA_API_KEY || !PINATA_API_SECRET) {
+    throw new Error('Pinata API keys are not set in environment variables.');
+  }
+  
+  return new PinataClient(PINATA_API_KEY, PINATA_API_SECRET);
 }
-if (!ENCRYPTION_SECRET_KEY || ENCRYPTION_SECRET_KEY.length !== 64) { // 32 bytes = 64 hex chars
-  throw new Error('ENCRYPTION_SECRET_KEY is not set or is not 32 bytes (64 hex characters).');
-}
 
-const pinata = new PinataClient(PINATA_API_KEY, PINATA_API_SECRET);
-const encryptionKeyBuffer = Buffer.from(ENCRYPTION_SECRET_KEY, 'hex');
+function getEncryptionKey(): Buffer {
+  const ENCRYPTION_SECRET_KEY = process.env.ENCRYPTION_SECRET_KEY;
+  
+  if (!ENCRYPTION_SECRET_KEY || ENCRYPTION_SECRET_KEY.length !== 64) { // 32 bytes = 64 hex chars
+    throw new Error('ENCRYPTION_SECRET_KEY is not set or is not 32 bytes (64 hex characters).');
+  }
+  
+  return Buffer.from(ENCRYPTION_SECRET_KEY, 'hex');
+}
 
 // Encryption function (matches test implementation)
-function encryptCID(cid: string): string {
+function encryptCID(cid: string, encryptionKey: Buffer): string {
   const nonce = randomBytes(12); // 96-bit nonce for ChaCha20-Poly1305
-  const cipher = createCipheriv('chacha20-poly1305', encryptionKeyBuffer, nonce, {
+  const cipher = createCipheriv('chacha20-poly1305', encryptionKey, nonce, {
     authTagLength: 16,
   });
   
@@ -36,6 +44,21 @@ function encryptCID(cid: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // Validate configuration at request time (not module load time)
+    let pinata: PinataClient;
+    let encryptionKey: Buffer;
+    
+    try {
+      pinata = getPinataClient();
+      encryptionKey = getEncryptionKey();
+    } catch (configError: any) {
+      console.error('Configuration error:', configError);
+      return NextResponse.json({ 
+        error: 'Server configuration error', 
+        message: configError.message 
+      }, { status: 500 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
@@ -65,11 +88,21 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to get IPFS CID from Pinata.');
     }
 
-    const encryptedCid = encryptCID(ipfsCid);
+    // Check if public upload is requested
+    const isPublic = req.nextUrl.searchParams.get('public') === 'true';
+
+    if (isPublic) {
+      return NextResponse.json({ cid: ipfsCid });
+    }
+
+    const encryptedCid = encryptCID(ipfsCid, encryptionKey);
 
     return NextResponse.json({ encryptedCid });
   } catch (error: any) {
     console.error('IPFS upload or encryption failed:', error);
-    return NextResponse.json({ error: 'Failed to upload file or encrypt CID', details: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to upload file or encrypt CID', 
+      message: error.message 
+    }, { status: 500 });
   }
 }

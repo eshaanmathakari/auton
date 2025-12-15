@@ -48,7 +48,6 @@ export async function GET(
     }
 
     const buyerPubkey = new PublicKey(buyerPubkeyStr);
-    const creatorPubkey = new PublicKey(creatorId);
     const contentIdNum = new anchor.BN(contentId).toNumber();
 
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
@@ -59,7 +58,26 @@ export async function GET(
     }, {
       commitment: 'confirmed',
     });
+    // Explicitly pass programId to ensure it matches environment variable
     const program = new anchor.Program<AutonProgram>(IDL as AutonProgram, provider);
+
+    // Resolve creatorId (Wallet or Username)
+    let creatorPubkey: PublicKey;
+    try {
+      creatorPubkey = new PublicKey(creatorId);
+    } catch {
+      // It's a username, look up the wallet
+      const [usernamePDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("username"), Buffer.from(creatorId)],
+        programId
+      );
+      try {
+        const usernameAccount = await program.account.usernameAccount.fetch(usernamePDA);
+        creatorPubkey = usernameAccount.authority;
+      } catch (e) {
+        return NextResponse.json({ error: `Creator username @${creatorId} not found` }, { status: 404 });
+      }
+    }
 
     // 1. Check for PaidAccessAccount (receipt)
     const [paidAccessPDA] = PublicKey.findProgramAddressSync(
@@ -68,7 +86,7 @@ export async function GET(
         buyerPubkey.toBuffer(),
         new anchor.BN(contentIdNum).toArrayLike(Buffer, "le", 8),
       ],
-      program.programId
+      programId
     );
 
     let hasAccess = false;
@@ -86,7 +104,7 @@ export async function GET(
         Buffer.from("creator"),
         creatorPubkey.toBuffer()
       ],
-      program.programId
+      programId
     );
     const creatorAccount = await program.account.creatorAccount.fetch(creatorAccountPDA);
     const contentItem = creatorAccount.content.find(item => item.id.toNumber() === contentIdNum);

@@ -1,17 +1,19 @@
-"use client"
+'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import * as anchor from '@coral-xyz/anchor';
-import { Connection, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { AutonProgram } from '@/lib/anchor/auton_program';
 import IDL from '@/lib/anchor/auton_program.json';
-import { ArrowLeft, Lock, CheckCircle, AlertCircle, Info, Zap, Image as ImageIcon, Video, Download } from 'lucide-react';
+import { ArrowLeft, Lock, CheckCircle, AlertCircle, Info, Zap, User, ExternalLink, Download } from 'lucide-react';
+import PaymentModal from './PaymentModal';
+import { FeeBadge } from './FeeBreakdown';
+import { getUserFriendlyErrorMessage, logWalletError, validateTransaction } from '@/lib/transaction-utils';
 
-const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'http://127.0.0.1:8899';
 const AUTON_PROGRAM_ID = process.env.NEXT_PUBLIC_AUTON_PROGRAM_ID;
 const IPFS_GATEWAY_URL = 'https://ipfs.io/ipfs/';
 
@@ -32,6 +34,7 @@ type CreatorAccountData = {
   creatorWallet: PublicKey;
   lastContentId: anchor.BN;
   content: ContentItem[];
+  profileCid?: string;
 };
 
 type PaymentDetails = {
@@ -41,21 +44,44 @@ type PaymentDetails = {
   contentId: number;
 };
 
+type CreatorProfile = {
+  id: string;
+  username: string | null;
+  displayName: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  socialLinks: Record<string, string>;
+  walletAddress: string;
+};
+
 type CreatorContentPageProps = {
-    creatorId: string;
+    creatorId: string; // Can be either username or wallet address
 };
 
 export default function CreatorContentPage({ creatorId }: CreatorContentPageProps) {
   const { publicKey, connected, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+  
   const [creatorAccount, setCreatorAccount] = useState<CreatorAccountData | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<CreatorProfile | null>(null);
+  const [resolvedWalletAddress, setResolvedWalletAddress] = useState<string | null>(null);
+  const [isUsername, setIsUsername] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [decryptedCids, setDecryptedCids] = useState<Map<number, string>>(new Map());
   const [contentTypes, setContentTypes] = useState<Map<number, string>>(new Map());
   const [paymentProcessing, setPaymentProcessing] = useState<Map<number, boolean>>(new Map());
+  const [selectedContentForPayment, setSelectedContentForPayment] = useState<ContentItem | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const connection = useMemo(() => new Connection(SOLANA_RPC_URL, 'confirmed'), []);
+  // Log connection endpoint for debugging
+  useEffect(() => {
+    if (connection) {
+      console.log('Using connection endpoint:', (connection as any).rpcEndpoint || 'default');
+    }
+  }, [connection]);
+
   const provider = useMemo(() => {
     // Create a dummy wallet for read-only operations
     const dummyWallet = {
@@ -69,20 +95,62 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
   }, [connection]);
 
   const program = useMemo(() => {
-    if (provider && programId) {
-      return new anchor.Program<AutonProgram>(IDL as AutonProgram, provider);
+    if (provider) {
+        const idl = IDL as anchor.Idl;
+        return new anchor.Program(idl, provider) as anchor.Program<AutonProgram>;
     }
     return null;
   }, [provider]);
 
-  const creatorPubkey = useMemo(() => {
-    if (!creatorId) return null;
+  // Resolve creatorId (Username -> Wallet or Wallet -> Wallet)
+  const resolveCreator = useCallback(async () => {
+    if (!creatorId || !program) return;
+    setLoading(true);
+    setError('');
+
     try {
-      return new PublicKey(creatorId);
+      // 1. Try as PublicKey first
+      try {
+        const pubkey = new PublicKey(creatorId);
+        setResolvedWalletAddress(pubkey.toBase58());
+        setIsUsername(false);
+        return; // It's a valid key, proceed
+      } catch {
+        // Not a public key, treat as username
+      }
+
+      // 2. Treat as Username: Fetch UsernameAccount PDA
+      setIsUsername(true);
+      const [usernamePDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("username"), Buffer.from(creatorId)],
+        program.programId
+      );
+
+      try {
+        const usernameAccount = await program.account.usernameAccount.fetch(usernamePDA);
+        setResolvedWalletAddress(usernameAccount.authority.toBase58());
+      } catch (err) {
+        console.error("Username lookup failed:", err);
+        setError(`Creator @${creatorId} not found.`);
+        setResolvedWalletAddress(null);
+      }
+    } catch (err) {
+      console.error('Error resolving creator:', err);
+      setError('Failed to resolve creator.');
+    } finally {
+        // Only set loading false if we failed. If success, fetchCreatorContent will handle loading state.
+        if (!resolvedWalletAddress) setLoading(false); 
+    }
+  }, [creatorId, program]);
+
+  const creatorPubkey = useMemo(() => {
+    if (!resolvedWalletAddress) return null;
+    try {
+      return new PublicKey(resolvedWalletAddress);
     } catch {
       return null;
     }
-  }, [creatorId]);
+  }, [resolvedWalletAddress]);
 
   if (!creatorPubkey) {
     return (
@@ -96,16 +164,22 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     if (!creatorPubkey || !programId) return null;
     const [pda] = PublicKey.findProgramAddressSync(
       [Buffer.from("creator"), creatorPubkey.toBuffer()],
-      programId
+      program.programId
     );
     return pda;
-  }, [creatorPubkey]);
+  }, [creatorPubkey, programId]);
 
+  // Trigger resolution
   useEffect(() => {
-    if (program && creatorAccountPDA) {
+    resolveCreator();
+  }, [resolveCreator]);
+
+  // Fetch content once resolved
+  useEffect(() => {
+    if (program && creatorAccountPDA && resolvedWalletAddress) {
       fetchCreatorContent();
     }
-  }, [program, creatorAccountPDA]);
+  }, [program, creatorAccountPDA, resolvedWalletAddress]);
 
   // If the page is opened with ?focus=<contentId>, auto-attempt unlock/display
   const searchParams = useSearchParams();
@@ -136,9 +210,36 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     try {
       const account = await program.account.creatorAccount.fetch(creatorAccountPDA);
       setCreatorAccount(account);
+
+      // Fetch Profile Metadata if CID exists
+      if (account.profileCid) {
+        try {
+          const response = await fetch(`${IPFS_GATEWAY_URL}${account.profileCid}`);
+          if (response.ok) {
+            const profileData = await response.json();
+            setCreatorProfile({
+                id: resolvedWalletAddress!,
+                username: isUsername ? creatorId : undefined, // Keep username if we resolved from it
+                displayName: profileData.displayName,
+                bio: profileData.bio,
+                avatarUrl: profileData.avatarUrl,
+                socialLinks: profileData.socialLinks,
+                walletAddress: resolvedWalletAddress!,
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load profile metadata:", e);
+        }
+      }
+
     } catch (err: any) {
       console.error('Failed to fetch creator account:', err);
-      setError('Creator account not found or failed to load content.');
+      const msg = err.message || err.toString();
+      if (msg.includes("Account does not exist")) {
+         setError('This creator has not initialized their account yet.');
+      } else {
+         setError('Failed to load content.');
+      }
       setCreatorAccount(null);
     } finally {
       setLoading(false);
@@ -171,15 +272,26 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
     setSuccess('');
 
     try {
-        const accessResponse = await fetch(
-          `/api/content/${creatorPubkey.toBase58()}/${contentItem.id.toNumber()}/access?buyerPubkey=${publicKey?.toBase58?.()}`
-        );
+      // 1. Check Access via API (Decrypts if valid receipt exists)
+      const accessResponse = await fetch(
+        `/api/content/${creatorPubkey!.toBase58()}/${contentItem.id.toNumber()}/access?buyerPubkey=${publicKey.toBase58()}`
+      );
 
       if (accessResponse.status === 402) {
-        const { paymentDetails }: { paymentDetails: PaymentDetails } = await accessResponse.json();
+        // 2. Payment Required: Build Transaction
+        console.log("Payment required. Building transaction...");
+        
+        // Fetch Protocol Config to get Admin Wallet
+        const [configPDA] = PublicKey.findProgramAddressSync(
+            [Buffer.from("config")],
+            program.programId
+        );
+        const protocolConfig = await program.account.protocolConfig.fetch(configPDA);
+        const adminWallet = protocolConfig.adminWallet;
 
         if (!creatorAccountPDA) throw new Error('Creator account PDA not found');
 
+        // Derive Receipt PDA
         const [paidAccessPDA] = PublicKey.findProgramAddressSync(
           [
             Buffer.from("access"),
@@ -189,33 +301,52 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
           program.programId
         );
 
+        // Build Instruction
         const ix = await program.methods
           .processPayment(new anchor.BN(contentItem.id.toNumber()))
           .accounts({
             paidAccessAccount: paidAccessPDA,
-            creatorAccount: creatorAccountPDA,
-            creatorWallet: new PublicKey(paymentDetails.creatorWalletAddress),
+            protocolConfig: configPDA,
+            creatorAccount: creatorAccountPDA!,
+            creatorWallet: creatorPubkey!,
+            adminWallet: adminWallet,
             buyer: publicKey,
             systemProgram: SystemProgram.programId,
           } as any)
           .instruction();
         
         const transaction = new Transaction().add(ix);
-
-        const { blockhash } = await connection.getLatestBlockhash();
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = publicKey;
 
-        const signature = await sendTransaction(transaction, connection);
-        await connection.confirmTransaction(signature, 'confirmed');
+        // Validate
+        const validation = validateTransaction(transaction);
+        if (!validation.valid) throw new Error(`Transaction validation failed: ${validation.error}`);
 
+        // Send
+        let signature: string;
+        try {
+            signature = await sendTransaction(transaction, connection);
+        } catch (walletError: any) {
+            logWalletError(walletError, 'Payment transaction');
+            throw new Error(getUserFriendlyErrorMessage(walletError));
+        }
+
+        console.log("Payment sent:", signature);
+        await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+        
         setSuccess('Payment confirmed! Retrieving content...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        await handleUnlockContent(contentItem);
+        
+        // 3. Retry Access Request (Now that receipt exists)
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for RPC sync
+        await handleUnlockContent(contentItem); // Recursive call
+
       } else if (accessResponse.ok) {
+        // 4. Access Granted
         const { ipfsCid }: { ipfsCid: string } = await accessResponse.json();
         setDecryptedCids(prev => new Map(prev).set(contentItem.id.toNumber(), ipfsCid));
-        setSuccess('Content unlocked! Determining content type...');
+        setSuccess('Content unlocked!');
         await fetchContentType(contentItem, ipfsCid);
       } else {
         const errData = await accessResponse.json();
@@ -223,7 +354,8 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
       }
     } catch (err: any) {
       console.error('Unlock content error:', err);
-      setError(err.message || 'Failed to unlock content.');
+      const errorMessage = err?.message || getUserFriendlyErrorMessage(err) || 'Failed to unlock content.';
+      setError(errorMessage);
     } finally {
       setPaymentProcessing(prev => new Map(prev).set(contentItem.id.toNumber(), false));
     }
@@ -348,19 +480,91 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
         {/* Creator Info Card */}
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl p-8 mb-8 border border-gray-200/50 dark:border-gray-700/50">
           <div className="flex items-start justify-between flex-wrap gap-4">
-            <div>
-              <p className="text-4xl font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                Creator: 
-                <code className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-lg font-mono text-2xl">
-                  {creatorPubkey.toBase58().slice(0, 8)}...{creatorPubkey.toBase58().slice(-8)}
-                </code>
-              </p>
+            <div className="space-y-3">
+              {/* Username/Display Name */}
+              {creatorProfile?.username ? (
+                <div className="flex items-center gap-3">
+                  {creatorProfile.avatarUrl ? (
+                    <img 
+                      src={creatorProfile.avatarUrl} 
+                      alt={creatorProfile.displayName || creatorProfile.username}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-purple-200 dark:border-purple-700"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                      <User className="w-8 h-8 text-white" />
+                    </div>
+                  )}
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {creatorProfile.displayName || `@${creatorProfile.username}`}
+                    </h1>
+                    {creatorProfile.displayName && (
+                      <p className="text-purple-600 dark:text-purple-400 font-medium">
+                        @{creatorProfile.username}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-2xl font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                  Creator: 
+                  <code className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-lg font-mono text-xl">
+                    {creatorPubkey?.toBase58().slice(0, 8)}...{creatorPubkey?.toBase58().slice(-8)}
+                  </code>
+                </p>
+              )}
+              
+              {/* Bio */}
+              {creatorProfile?.bio && (
+                <p className="text-gray-600 dark:text-gray-400 max-w-2xl">
+                  {creatorProfile.bio}
+                </p>
+              )}
+
+              {/* Social Links */}
+              {creatorProfile?.socialLinks && Object.keys(creatorProfile.socialLinks).length > 0 && (
+                <div className="flex items-center gap-3 pt-2">
+                  {Object.entries(creatorProfile.socialLinks).map(([platform, url]) => (
+                    <a
+                      key={platform}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      {platform}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
+            
             <div className="flex items-center gap-2 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 px-4 py-2 rounded-full">
               <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">
                 {creatorAccount.content.length} items available
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* What is Auton - For first-time visitors */}
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 backdrop-blur-sm rounded-xl border border-purple-200 dark:border-purple-800 p-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex-shrink-0">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-purple-900 dark:text-purple-100 mb-2 text-lg">What is Auton?</h3>
+              <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed mb-3">
+                Auton is a decentralized platform for creators to share encrypted content. 
+                Pay once with Solana to unlock files permanently. Funds go directly to the creator.
+              </p>
+              <p className="text-xs text-purple-600 dark:text-purple-400">
+                Powered by x402 protocol • Instant payments • No middlemen
+              </p>
             </div>
           </div>
         </div>
@@ -445,26 +649,29 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
                   {/* Price and Creator */}
                   <div className="space-y-3">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-white bg-clip-text text-transparent">
-                        {item.price.toNumber() / anchor.web3.LAMPORTS_PER_SOL}
+                      <span className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                        ◎ {(item.price.toNumber() / anchor.web3.LAMPORTS_PER_SOL).toFixed(3)}
                       </span>
                       <span className="text-lg font-semibold text-gray-600 dark:text-gray-400">SOL</span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      <span>Direct to creator</span>
-                      <code className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded font-mono">
-                        {creatorAccount.creatorWallet.toBase58().slice(0, 4)}...
-                        {creatorAccount.creatorWallet.toBase58().slice(-4)}
-                      </code>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Direct to creator</span>
+                      </div>
+                      <FeeBadge />
                     </div>
                   </div>
 
                   {/* Action Button */}
                   {!isUnlocked && (
                     <button
-                      onClick={() => handleUnlockContent(item)}
+                      onClick={() => {
+                        if (!connected) return;
+                        setSelectedContentForPayment(item);
+                        setShowPaymentModal(true);
+                      }}
                       disabled={!connected || isProcessing}
                       className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-3 text-white font-semibold hover:from-purple-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                     >
@@ -481,7 +688,7 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
                       ) : (
                         <>
                           <Zap className="w-4 h-4" />
-                          Unlock for {item.price.toNumber() / anchor.web3.LAMPORTS_PER_SOL} SOL
+                          Unlock for ◎ {(item.price.toNumber() / anchor.web3.LAMPORTS_PER_SOL).toFixed(3)}
                         </>
                       )}
                     </button>
@@ -491,6 +698,26 @@ export default function CreatorContentPage({ creatorId }: CreatorContentPageProp
             );
           })}
         </div>
+
+        {/* Payment Modal */}
+        {selectedContentForPayment && creatorPubkey && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setSelectedContentForPayment(null);
+            }}
+            onConfirm={async () => {
+              await handleUnlockContent(selectedContentForPayment);
+              setShowPaymentModal(false);
+              setSelectedContentForPayment(null);
+            }}
+            contentTitle={selectedContentForPayment.title}
+            priceInSol={selectedContentForPayment.price.toNumber() / anchor.web3.LAMPORTS_PER_SOL}
+            creatorUsername={creatorProfile?.username || (isUsername ? creatorId : null)}
+            creatorWallet={creatorPubkey.toBase58()}
+          />
+        )}
       </div>
     </div>
   );

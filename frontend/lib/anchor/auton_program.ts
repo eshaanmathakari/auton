@@ -56,6 +56,11 @@ export type AutonProgram = {
           "signer": true
         },
         {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -72,6 +77,55 @@ export type AutonProgram = {
         {
           "name": "encryptedCid",
           "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "initializeConfig",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "protocolConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "initialFeePercentage",
+          "type": "u64"
         }
       ]
     },
@@ -114,6 +168,11 @@ export type AutonProgram = {
         },
         {
           "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
           "writable": true,
           "signer": true
         },
@@ -165,11 +224,33 @@ export type AutonProgram = {
           }
         },
         {
+          "name": "protocolConfig",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "creatorAccount",
           "writable": true
         },
         {
           "name": "creatorWallet",
+          "writable": true
+        },
+        {
+          "name": "adminWallet",
           "writable": true
         },
         {
@@ -186,6 +267,173 @@ export type AutonProgram = {
         {
           "name": "contentId",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "registerUsername",
+      "discriminator": [
+        134,
+        54,
+        123,
+        181,
+        28,
+        151,
+        36,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "usernameAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  110,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "username"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "username",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "updateConfig",
+      "discriminator": [
+        29,
+        158,
+        252,
+        191,
+        10,
+        83,
+        219,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "protocolConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "newAdminWallet",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "newFeePercentage",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateProfile",
+      "discriminator": [
+        98,
+        67,
+        99,
+        206,
+        86,
+        115,
+        175,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "creatorAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  101,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "profileCid",
+          "type": "string"
         }
       ]
     }
@@ -216,6 +464,32 @@ export type AutonProgram = {
         111,
         44
       ]
+    },
+    {
+      "name": "protocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "usernameAccount",
+      "discriminator": [
+        120,
+        2,
+        212,
+        44,
+        208,
+        63,
+        20,
+        122
+      ]
     }
   ],
   "errors": [
@@ -228,6 +502,16 @@ export type AutonProgram = {
       "code": 6001,
       "name": "contentNotFound",
       "msg": "The specified content was not found in the creator's account."
+    },
+    {
+      "code": 6002,
+      "name": "invalidUsername",
+      "msg": "Invalid username. Must be 3-32 characters, alphanumeric or underscore only."
+    },
+    {
+      "code": 6003,
+      "name": "invalidFeePercentage",
+      "msg": "Invalid fee percentage. Must be <= 10000 (100%)."
     }
   ],
   "types": [
@@ -277,6 +561,10 @@ export type AutonProgram = {
                 }
               }
             }
+          },
+          {
+            "name": "profileCid",
+            "type": "string"
           }
         ]
       }
@@ -293,6 +581,38 @@ export type AutonProgram = {
           {
             "name": "contentId",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "protocolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "adminWallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "feePercentage",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "usernameAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "username",
+            "type": "string"
           }
         ]
       }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import WalletProvider from "@/components/WalletProvider";
+import { PrivyProvider } from "@/components/PrivyProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Image from "next/image";
@@ -34,8 +35,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800`}
       >
         <ThemeProvider>
-          <WalletProvider>
-            <header className="sticky top-0 z-50 py-4">
+          <PrivyProvider>
+            <WalletProvider>
+              <header className="sticky top-0 z-50 py-4">
               <div className="container mx-auto px-4 max-w-7xl">
                 <div className="flex items-center justify-between backdrop-blur-xl rounded-full px-6 py-3 shadow-lg border border-gray-200/50 dark:border-gray-700/50">
                   <Link href="/" className="flex items-center gap-3 group">
@@ -68,7 +70,8 @@ export default function RootLayout({
             <main className="min-h-[calc(100vh-73px)]">
               {children}
             </main>
-          </WalletProvider>
+            </WalletProvider>
+          </PrivyProvider>
         </ThemeProvider>
       </body>
     </html>
